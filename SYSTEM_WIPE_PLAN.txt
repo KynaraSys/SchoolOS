@@ -1,0 +1,133 @@
+# System Data Wipe Implementation Plan
+
+> [!CAUTION]
+> **CRITICAL WARNING**: This plan involves destructive actions that will strictly delete data. These actions are irreversible. Always perform a full database backup before executing any of these strategies.
+
+## Overview
+This document outlines correct procedures to wipe system data. Two strategies are proposed depending on the desired outcome:
+1.  **Strategy A (Nuclear)**: Complete factory reset. Destroys schema and data, then rebuilds.
+2.  **Strategy B (Surgical)**: Clears operational data (Students, Incidents, Payments) while preserving configurations (Roles, Classes, Subjects, Admin Accounts).
+
+---
+
+## Strategy A: The "Nuclear" Reset
+Use this when you want to return the system to its absolute initial state (post-installation).
+
+### Mechanism
+Use the built-in Laravel Migrate command.
+
+### Command
+```bash
+php artisan migrate:fresh --seed
+```
+
+### What this does
+1.  **DROPS all database tables**.
+2.  **Re-runs all migrations** to rebuild empty tables.
+3.  **Runs DatabaseSeeder** to create the initial Super Admin, Roles, and Permissions.
+
+### Pros/Cons
+- **Pros**: Guarantees zero residual data. Fixes any schema inconsistencies.
+- **Cons**: Deletes everything including custom configured Classes, Subjects, and Secondary Admins. Time consuming for large schemas.
+
+---
+
+## Strategy B: Surgical Operational Wipe
+Use this when you want to clear "usage data" (Student records, day-to-day operations) but keep the "school structure" (Classes, Subjects, Roles, Admin Users).
+
+### Implementation Approach
+Create a custom Artisan command `php artisan system:wipe-data`.
+
+### Logic Flow
+1.  **Pre-flight Checks**:
+    - Check environment (Ask for verification if `production`).
+    - Require `ThisIsDestructive` confirmation input.
+2.  **Disable Foreign Key Checks**:
+    - `DB::statement('SET FOREIGN_KEY_CHECKS=0;');`
+3.  **Truncate Tables** (Order irrelevant due to FK disable, but logical grouping helps):
+    
+    **Discipline**
+    - `incident_status_logs`
+    - `incidents`
+    - `discipline_escalation_rules` (Optional: User preference)
+
+    **Academic / Attendance**
+    - `attendances`
+    - `exam_results`
+    - `student_attendance_risks`
+
+    **Finance**
+    - `payments`
+
+    **People (Order matters for logic)**
+    - `guardian_student` (Pivot)
+    - `guardian_documents`
+    - `guardian_notes`
+    - `guardians`
+    - `students`
+    
+    **Users (Selective Delete)**
+    - Delete `users` where `role` NOT IN ('Super Admin', 'Owner', 'ICT Admin').
+    - *Alternative*: Truncate `users` but re-seed the Super Admin immediately.
+
+4.  **Re-enable Foreign Key Checks**:
+    - `DB::statement('SET FOREIGN_KEY_CHECKS=1;');`
+5.  **Cleanup Storage**:
+    - Delete files in `storage/app/public/documents` (Student/Guardian docs).
+
+### Proposed Code Structure (`app/Console/Commands/SystemWipe.php`)
+
+```php
+public function handle()
+{
+    if (!$this->confirm('This will DELETE ALL STUDENT DATA. Are you sure?')) return;
+
+    DB::transaction(function () {
+        Schema::disableForeignKeyConstraints();
+
+        $tables = [
+            'incident_status_logs',
+            'incidents',
+            'attendances',
+            'payments',
+            'guardian_student',
+            'students',
+            'guardians',
+            // ... keys
+        ];
+
+        foreach ($tables as $table) {
+            DB::table($table)->truncate();
+        }
+
+        // Handle Users specifically to protect Admin
+        User::whereDoesntHave('roles', function($q) {
+            $q->whereIn('name', ['Super Admin', 'Owner', 'ICT Admin']);
+        })->delete();
+
+        Schema::enableForeignKeyConstraints();
+    });
+
+    $this->info('System wiped successfully.');
+}
+```
+
+---
+
+## Strategy C: Soft Delete / Archival
+Instead of deleting, add `deleted_at` timestamps (SoftDeletes) to all models.
+
+### What this does
+- Data remains in DB but hidden from queries.
+- Allows restoration.
+
+### Recommendation
+**NOT RECOMMENDED** for a "Wipe" requirement. This bloats the database and complicates unique constraints (e.g., student admission numbers). Use Strategy A or B for true wiping.
+
+---
+
+## Verification Plan
+After executing either strategy:
+1.  **Login**: Verify Admin login still works.
+2.  **Dashboard**: Verify all counters (Students, Incidents) are Zero.
+3.  **Database**: Inspect `tables` rows count.

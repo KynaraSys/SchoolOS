@@ -1,0 +1,37 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Temporary backend folder
+/backend_temp/
+
+# System reports/plans if they are temp (User can decide to keep them, but better safe if they contain sensitive info or are junk. 
+# Actually, I'll keep the reports as they seem to be documentation.)
+
+# Editors
+.vscode
+.idea

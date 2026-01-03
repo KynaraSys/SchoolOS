@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* School OS - Light Mode (Kynara Neutral Light Base) */
+  --background: #F4F6F8; /* Kynara Slate */
+  --foreground: #1F2933; /* Kynara Graphite */
+
+  --card: #FFFFFF;
+  --card-foreground: #1F2933;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #1F2933;
+
+  /* School OS Teal */
+  --primary: #2FA4A9;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #E2E8F0;
+  --secondary-foreground: #1F2933;
+
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+
+  --accent: #F1F5F9;
+  --accent-foreground: #1F2933;
+
+  --destructive: #B42318; /* Deep Red */
+  --destructive-foreground: #FFFFFF;
+
+  --warning: #ED8B00; /* Amber */
+  --warning-foreground: #FFFFFF;
+
+  --success: #2E7D32; /* Muted Green */
+  --success-foreground: #FFFFFF;
+
+  --info: #4A6FA5; /* Soft Blue */
+  --info-foreground: #FFFFFF;
+
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #2FA4A9; /* Focus rings - Teal */
+
+  --radius: 0.5rem;
+
+  /* Chart Palette */
+  --chart-1: #2FA4A9; /* Teal */
+  --chart-2: #4A6FA5; /* Steel Blue */
+  --chart-3: #9AA5B1; /* Slate Gray */
+  --chart-4: #2E7D32; /* Muted Green */
+  --chart-5: #ED8B00; /* Amber */
+
+  /* Sidebar - Always Dark (Kynara Indigo) */
+  --sidebar: #0F1E3D;
+  --sidebar-foreground: #F4F6F8;
+  --sidebar-primary: #2FA4A9;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1F2933;
+  --sidebar-accent-foreground: #F4F6F8;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #2FA4A9;
+}
+
+.dark {
+  /* School OS - Dark Mode (Kynara Indigo Base) */
+  --background: #0F1E3D; /* Kynara Indigo (Primary Base) */
+  --foreground: #F4F6F8; /* Neutral Light */
+
+  --card: #1F2933; /* Kynara Graphite (Surface) */
+  --card-foreground: #F4F6F8;
+
+  --popover: #1F2933;
+  --popover-foreground: #F4F6F8;
+
+  --primary: #2FA4A9; /* Accent unchanged */
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #1F2933;
+  --secondary-foreground: #F4F6F8;
+
+  --muted: #1F2933;
+  --muted-foreground: #9AA5B1;
+
+  --accent: #1F2933;
+  --accent-foreground: #F4F6F8;
+
+  --destructive: #B42318;
+  --destructive-foreground: #FFFFFF;
+
+  --warning: #ED8B00;
+  --warning-foreground: #FFFFFF;
+
+  --success: #2E7D32;
+  --success-foreground: #FFFFFF;
+
+  --info: #4A6FA5;
+  --info-foreground: #FFFFFF;
+
+  --border: rgba(255, 255, 255, 0.08); /* Subtle border for dark mode */
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #2FA4A9;
+  
+  /* Charts in dark mode - generally same but ensure visibility */
+  --chart-1: #2FA4A9;
+  --chart-2: #4A6FA5;
+  --chart-3: #9AA5B1;
+  --chart-4: #2E7D32;
+  --chart-5: #ED8B00;
+
+  /* Sidebar Same in Dark Mode */
+  --sidebar: #0F1E3D;
+  --sidebar-foreground: #F4F6F8;
+  --sidebar-primary: #2FA4A9;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1F2933;
+  --sidebar-accent-foreground: #F4F6F8;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #2FA4A9;
+}
+
+@theme inline {
+  --font-sans: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  
+  .dark .glass-card {
+     background: rgba(31, 41, 51, 0.7); /* Kynara Graphite with opacity */
+     border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

@@ -1,0 +1,71 @@
+# SYSTEM AUDIT REPORT
+**Target:** School Operating System (Student Features)
+**Context:** Kenyan Education System (8-4-4 / CBC)
+**Date:** 2025-12-24
+
+---
+
+### ✅ IMPLEMENTED CORRECTLY
+These features work as expected and are grounded in the database/backend:
+*   **Admission Number Generation**: A logic exists to auto-generate identifiers (Format: `YYYY/XXXX`) in `StudentController`.
+*   **Basic Student Identity**: `students` table captures Gender, DOB, Address, and links to `users` for Name/Email.
+*   **Class & Stream Assignment**: Database supports `classes` with `stream` columns (e.g., "Form 4" "North"), and students link to them correctly via `class_id`.
+*   **Profile Image**: Implemented via Base64 storage in the `users` table (though Base64 DB storage is not best practice for scale, it functions).
+*   **Search**: Frontend has basic capacity to filter students.
+
+### ⚠️ PARTIALLY IMPLEMENTED
+*   **Feature: Fee Management**
+    *   *What exists:* A `payments` table tracks individual transactions (Method, Date, Amount).
+    *   *What is missing:* **CRITICAL**. No `fee_structures` table to define how much a class *should* pay. Frontend `StudentProfile.tsx` uses a **HARDCODED** `feeTotal = 45000`.
+    *   *Risk:* Impossible to calculate real balances or manage different fees for different classes (e.g., Form 4 vs Form 1).
+*   **Feature: Parent Contact**
+    *   *What exists:* A simple `parent_email` string column in the `students` table.
+    *   *What is missing:* No `Guardians` table. No support for multiple parents, phone numbers, or relationship definitions (Mother/Father).
+    *   *Risk:* Cannot send SMS to parents (no phone stored), cannot allow parent login (no user account for parent).
+
+### ❌ NOT IMPLEMENTED (HIGH PRIORITY)
+*   **Feature: Academic Performance (Exams & Marks)**
+    *   *Impact:* The system is purely administrative, not academic. No `exams`, `marks`, `grade_scale` tables exist. The "Academic" tab in the profile is a placeholder.
+    *   *Priority:* **CRITICAL**
+*   **Feature: Attendance Tracking**
+    *   *Impact:* No database support for daily registers. The "Attendance" tab is a placeholder.
+    *   *Priority:* **HIGH**
+*   **Feature: Discipline Management**
+    *   *Impact:* No ability to log cases or sanctions.
+    *   *Priority:* **HIGH**
+*   **Feature: Document Management**
+    *   *Impact:* No way to store Birth Certificates or Admission Letters.
+    *   *Priority:* MEDIUM
+
+### 🛠 DATABASE FIXES REQUIRED
+1.  **Create `guardians` table**: `id`, `user_id`, `relationship`, `phone_primary`.
+2.  **Create `student_guardian` pivot**: Many-to-many (siblings have same parents).
+3.  **Create `fee_structures` table**: `class_id`, `term_id`, `amount`, `title` (tuition/lunch).
+4.  **Create `exams` & `marks` tables**: Standard academic schema.
+5.  **Add `nationality`, `admission_date`, `kcpe_index`, `status`** to `students` table.
+
+### 🧩 BACKEND LOGIC GAPS
+*   **Validation**: `StudentController` allows creating a student without a parent contact (field is nullable).
+*   **RBAC**: While `Roles` exist, the `StudentController` does not enforce that *only* Teachers/Admins can create students (needs middleware verification).
+*   **Finances**: No logic to auto-invoice students or carry forward balances from previous terms.
+
+### 🇰🇪 KENYA-SPECIFIC RISKS
+*   **KCPE/KCSE Data**: Missing `index_number` makes it impossible to use for exam registration or official government returns.
+*   **NEMIS Compatibility**: Missing `upn` (Unique Personal Identifier) or Birth Certificate No.
+*   **Mobile Money**: Payment system records "Method" but has no integration logic for M-Pesa STK Push or C2B validation.
+*   **Streams**: Good support for streams (North/South), but no logic to handle "Sets" or elective subjects which are crucial for High School (Form 3/4).
+
+### 🧠 FINAL VERDICT
+*   **Readiness Score:** **35 / 100**
+*   **Can this system run a real Kenyan school today?** **NO**
+*   **Top 5 Fixes to Prioritize:**
+    1.  **Guardian System**: Replace `parent_email` string with real User accounts for Parents.
+    2.  **Fee Structure**: Allow setting fees per Class/Term so balances are real.
+    3.  **Academic Module**: Create Exams and Marks tables.
+    4.  **Attendance**: Simple daily register database.
+    5.  **Kenyan Fields**: Add `UPN`, `Index No`, and `Birth Cert No`.
+    6.  **Mobile Money**: Payment system records "Method" but has no integration logic for M-Pesa STK Push or C2B validation.
+  
+  
+    Audit analysis based on file system state as of 2025-12-24.
+

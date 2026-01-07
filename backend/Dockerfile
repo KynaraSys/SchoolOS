@@ -2,17 +2,26 @@ FROM php:8.2-apache
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    libpq-dev \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
     libxml2-dev \
     libzip-dev \
+    libcurl4-openssl-dev \
+    libpq-dev \
     unzip \
     && docker-php-ext-install \
     pdo_pgsql \
+    mbstring \
     bcmath \
     ctype \
     fileinfo \
     xml \
-    zip
+    zip \
+    curl \
+    intl \
+    gd
 
 # Enable mod_rewrite
 RUN a2enmod rewrite

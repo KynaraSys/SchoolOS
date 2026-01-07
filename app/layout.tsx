@@ -12,9 +12,10 @@ export const metadata: Metadata = {
   title: "School OS by Kynara Systems",
   description:
     "Production-ready School Operating System for Kenya - Powered by Kynara Systems",
-  generator: "v0.app",
   icons: {
-    icon: "/icon.png",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/new-favicon.png",
   },
 }
 
@@ -24,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
         <Providers>
           {children}

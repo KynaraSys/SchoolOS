@@ -20,6 +20,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'view_users',
             'edit_users',
             'delete_users',
+            
+            // Staff Management (2) [NEW]
+            'manage_staff',
+            'view_staff',
 
             // Role Management (5)
             'create_roles',
@@ -68,6 +72,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'Admin']);
         $admin->syncPermissions([
             'manage_users', 'edit_users', 'view_users', 'delete_users',
+            'manage_staff', 'view_staff',
             'manage_roles', 'create_roles', 'edit_roles', 'view_roles',
             'manage_classes', 'manage_subjects', 'view_classes', 'view_subjects',
             'view_logs', 'manage_guardians', 'manage_transport'
@@ -76,6 +81,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // ICT Admin
         Role::firstOrCreate(['name' => 'ICT Admin'])->syncPermissions([
             'manage_users', 'edit_users', 'view_users',
+            'manage_staff', 'view_staff',
             'manage_roles', 'view_roles', 'view_logs',
             'manage_classes', 'manage_subjects'
         ]);

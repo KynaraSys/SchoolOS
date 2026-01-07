@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,37 +9,86 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, Save, TrendingUp } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const students = [
-    { id: "1", name: "Alice Kamau", adm: "16701", marks: "78", grade: "A-" },
-    { id: "2", name: "Brian Ochieng", adm: "16702", marks: "65", grade: "B" },
-    { id: "3", name: "Cynthia Wanjiku", adm: "16703", marks: "82", grade: "A" },
-    { id: "4", name: "David Kimani", adm: "16704", marks: "", grade: "-" },
-    { id: "5", name: "Esther Nyambura", adm: "16705", marks: "55", grade: "C+" },
-]
+import { getStudents } from "@/lib/api-users"
+import { assessmentApi } from "@/lib/api-assessment"
+
+// const students = [...] // Removed mock data
 
 export default function ResultsEntry({ examId }: { examId: string }) {
     const router = useRouter()
-    const [marksData, setMarksData] = useState(students)
+    const [students, setStudents] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+    const [marksData, setMarksData] = useState<Record<string, { score: string, remarks: string }>>({})
 
-    const handleMarkChange = (id: string, marks: string) => {
-        // Simple mock grading logic
-        let grade = "-"
-        const score = parseInt(marks)
-        if (!isNaN(score)) {
-            if (score >= 80) grade = "A"
-            else if (score >= 75) grade = "A-"
-            else if (score >= 70) grade = "B+"
-            else if (score >= 65) grade = "B"
-            else if (score >= 60) grade = "B-"
-            else if (score >= 55) grade = "C+"
-            else if (score >= 50) grade = "C"
-            else if (score >= 45) grade = "C-"
-            else if (score >= 40) grade = "D+"
-            else grade = "D" // simplified
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch students for Form 3A (mocked class ID or param)
+                // ideally passed via props or context
+                const data = await getStudents({ class_id: 1 });
+                // Filter if API doesn't filter, but we updated API to filter.
+                // Assuming data is array
+                setStudents(Array.isArray(data) ? data : (data as any).data || []);
+                setLoading(false)
+            } catch (error) {
+                console.error("Failed to fetch students", error)
+                setLoading(false)
+            }
         }
+        fetchData()
+    }, [])
 
-        setMarksData(marksData.map(s => s.id === id ? { ...s, marks, grade } : s))
+    const calculateIndicator = (val: string) => {
+        const score = parseFloat(val)
+        if (isNaN(score)) return null
+        if (score >= 90) return { label: 'EE1', color: 'bg-green-700' }
+        if (score >= 75) return { label: 'EE2', color: 'bg-green-600' }
+        if (score >= 58) return { label: 'ME1', color: 'bg-blue-600' }
+        if (score >= 41) return { label: 'ME2', color: 'bg-blue-500' }
+        if (score >= 31) return { label: 'AE1', color: 'bg-amber-500' }
+        if (score >= 21) return { label: 'AE2', color: 'bg-amber-600' }
+        if (score >= 11) return { label: 'BE1', color: 'bg-red-500' }
+        return { label: 'BE2', color: 'bg-red-600' }
     }
+
+    const handleMarkChange = (id: string, field: 'score' | 'remarks', value: string) => {
+        setMarksData(prev => ({
+            ...prev,
+            [id]: { ...prev[id], [field]: value }
+        }))
+    }
+
+    const handleSave = async () => {
+        setSaving(true)
+        try {
+            const promises = Object.entries(marksData).map(([studentId, data]) => {
+                const score = parseFloat(data.score)
+                if (isNaN(score)) return Promise.resolve()
+
+                return assessmentApi.storeAssessment({
+                    student_id: parseInt(studentId),
+                    subject_id: 1, // Default Math
+                    assessment_type: 'hybrid',
+                    tool_type: 'written_test',
+                    raw_score: score,
+                    teacher_remarks: data.remarks,
+                    assessed_at: new Date().toISOString()
+                })
+            })
+
+            await Promise.all(promises)
+            alert("Assessments saved successfully!")
+            router.back()
+        } catch (error) {
+            console.error(error)
+            alert("Failed to save assessments")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    if (loading) return <div>Loading students...</div>
 
     return (
         <div className="space-y-6">
@@ -49,24 +98,15 @@ export default function ResultsEntry({ examId }: { examId: string }) {
                         <ChevronLeft className="h-5 w-5" />
                     </Button>
                     <div>
-                        <h1 className="text-2xl font-bold">Enter Marks: End of Term 3 Exams</h1>
-                        <p className="text-muted-foreground">Mathematics • Form 3A</p>
+                        <h1 className="text-2xl font-bold">Assessment Entry: Mathematics</h1>
+                        <p className="text-muted-foreground">Form 3A • Term 3</p>
                     </div>
                 </div>
 
                 <div className="flex gap-2">
-                    <Select defaultValue="form-3a">
-                        <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="Select Class" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="form-3a">Form 3A</SelectItem>
-                            <SelectItem value="form-2b">Form 2B</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button>
+                    <Button onClick={handleSave} disabled={saving}>
                         <Save className="mr-2 h-4 w-4" />
-                        Save Marks
+                        {saving ? 'Saving...' : 'Save Assessments'}
                     </Button>
                 </div>
             </div>
@@ -78,36 +118,48 @@ export default function ResultsEntry({ examId }: { examId: string }) {
                             <TableRow>
                                 <TableHead className="w-[100px]">ADM No</TableHead>
                                 <TableHead className="w-[300px]">Student Name</TableHead>
-                                <TableHead className="w-[150px]">Score (%)</TableHead>
-                                <TableHead>Grade</TableHead>
-                                <TableHead>Pos</TableHead>
+                                <TableHead className="w-[150px]">Score (Hybrid)</TableHead>
+                                <TableHead>CBE Indicator</TableHead>
                                 <TableHead>Remarks</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {marksData.map((student) => (
-                                <TableRow key={student.id}>
-                                    <TableCell className="font-mono">{student.adm}</TableCell>
-                                    <TableCell className="font-medium">{student.name}</TableCell>
-                                    <TableCell>
-                                        <Input
-                                            type="number"
-                                            value={student.marks}
-                                            onChange={(e) => handleMarkChange(student.id, e.target.value)}
-                                            className="w-20"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={`font-bold ${student.grade.startsWith('A') ? 'text-green-600' : ''}`}>
-                                            {student.grade}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>-</TableCell>
-                                    <TableCell>
-                                        <Input className="h-8 w-full min-w-[200px]" placeholder="Teacher's remarks..." />
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {students.map((student) => {
+                                const data = marksData[student.id] || { score: '', remarks: '' }
+                                const indicator = calculateIndicator(data.score)
+
+                                return (
+                                    <TableRow key={student.id}>
+                                        <TableCell className="font-mono">{student.admission_number}</TableCell>
+                                        <TableCell className="font-medium">{student.first_name} {student.last_name}</TableCell>
+                                        <TableCell>
+                                            <Input
+                                                type="number"
+                                                value={data.score}
+                                                onChange={(e) => handleMarkChange(student.id, 'score', e.target.value)}
+                                                className="w-20"
+                                                min={0}
+                                                max={100}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            {indicator ? (
+                                                <span className={`px-2 py-1 rounded text-white text-xs font-bold ${indicator.color}`}>
+                                                    {indicator.label}
+                                                </span>
+                                            ) : '-'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input
+                                                value={data.remarks}
+                                                onChange={(e) => handleMarkChange(student.id, 'remarks', e.target.value)}
+                                                className="h-8 w-full min-w-[200px]"
+                                                placeholder="Teacher's remarks..."
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
                         </TableBody>
                     </Table>
                 </CardContent>

@@ -22,7 +22,9 @@ class UpdateUserRequest extends FormRequest
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userId,
             'password' => 'sometimes|nullable|string|min:8|confirmed',
-            'role' => 'sometimes|required|string|exists:roles,name',
+            'roles' => 'sometimes|array',
+            'roles.*' => 'exists:roles,name',
+            'role' => 'sometimes|string|exists:roles,name',
             'is_active' => 'sometimes|boolean',
         ];
     }

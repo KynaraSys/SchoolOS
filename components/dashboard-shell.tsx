@@ -42,21 +42,10 @@ import Link from "next/link"
 
 // Extended nav item with roles
 const navigation = [
-  { name: "Overview", icon: LayoutDashboard, href: "/", active: true, roles: ['Super Admin', 'Admin', 'Teacher', 'Accountant', 'Parent'] },
+  { name: "Overview", icon: LayoutDashboard, href: "/", active: true, roles: ['Admin', 'Teacher', 'Accountant', 'Parent'] },
   { name: "Students", icon: Users, href: "/students", active: false, roles: ['Admin', 'Teacher', 'Accountant'] },
-  { name: "Parents/Guardians", icon: Baby, href: "/guardians", active: false, roles: ['Super Admin', 'Admin', 'Teacher', 'Admissions Officer'] },
-  {
-    name: "Academic",
-    icon: GraduationCap,
-    href: "/academic",
-    active: false,
-    roles: ['Admin', 'Teacher'],
-    children: [
-      { name: "Overview", href: "/academic", roles: ['Admin', 'Teacher'] },
-      { name: "Exams", href: "/exams", roles: ['Admin', 'Teacher'] },
-      { name: "Results", href: "/exams", roles: ['Admin', 'Teacher'] },
-    ]
-  },
+  { name: "Parents/Guardians", icon: Baby, href: "/guardians", active: false, roles: ['Admin', 'Teacher', 'Admissions Officer'] },
+  { name: "Academic", icon: GraduationCap, href: "/academic", active: false, roles: ['Admin', 'Teacher'] },
   { name: "Finance", icon: DollarSign, href: "/finance", active: false, roles: ['Admin', 'Accountant', 'Parent'] },
   { name: "Attendance", icon: Calendar, href: "/attendance", active: false, roles: ['Admin', 'Teacher', 'Parent'] },
   { name: "Communication", icon: MessageSquare, href: "/communication", active: false, roles: ['Admin', 'Teacher', 'Parent'] },

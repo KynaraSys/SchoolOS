@@ -147,7 +147,7 @@ export default function AppShell({ children, user, breadcrumbs }: AppShellProps)
                 src="/school-os-logo-final-v2.png"
                 alt="School OS by Kynara Systems"
                 fill
-                className="object-contain"
+                className="object-contain drop-shadow-[0_0_15px_rgba(47,164,169,0.5)]"
                 priority
               />
             </div>

@@ -31,8 +31,8 @@ class SchoolClass extends Model
     public function currentTeacher()
     {
         return $this->hasOne(ClassTeacherAssignment::class, 'class_id')
-            ->where('is_primary', true)
-            ->where('academic_year', date('Y')); // Default to current year, dynamic handling in controller prefers
+            ->where('is_primary', true);
+            //->where('academic_year', date('Y')); // Default to current year, dynamic handling in controller prefers
     }
 
     public function grades()

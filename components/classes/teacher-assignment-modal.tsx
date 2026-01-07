@@ -8,6 +8,7 @@ import { Check, Loader2, User as UserIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { User } from "@/lib/types/roles"
 import { Label } from "@/components/ui/label"
+import { getUsers } from "@/lib/api-users"
 
 interface TeacherAssignmentModalProps {
     isOpen: boolean
@@ -23,24 +24,23 @@ export function TeacherAssignmentModal({ isOpen, onClose, onAssign, academicYear
     const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null)
     const [isAssigning, setIsAssigning] = useState(false)
 
-    // Mock fetch teachers - in production this would be an API call
+    // Fetch teachers from API
     useEffect(() => {
         if (isOpen) {
             const fetchTeachers = async () => {
                 setIsLoading(true)
                 try {
-                    // TODO: Replace with actual API call to get users with role 'teacher'
-                    // const response = await fetch('/api/users?role=teacher&all=true');
-                    // const data = await response.json();
-                    // setTeachers(data);
+                    // Fetch all staff first, then filter client-side to be safe
+                    const data = await getUsers(1, true, { type: 'staff' })
 
-                    // Simulation
-                    await new Promise(resolve => setTimeout(resolve, 800))
-                    setTeachers([
-                        { id: "1", full_name: "John Doe", email: "john@school.com", role: "teacher", school_id: "SCH001" },
-                        { id: "2", full_name: "Jane Smith", email: "jane@school.com", role: "teacher", school_id: "SCH001" },
-                        { id: "3", full_name: "Robert Johnson", email: "robert@school.com", role: "teacher", school_id: "SCH001" },
-                    ])
+                    const staffList = Array.isArray(data) ? data : (data.data || [])
+                    // Filter for role 'Teacher' AND not already assigned as primary for this year
+                    const teacherList = staffList.filter((user: any) =>
+                        user.roles.some((r: any) => r.name === 'Teacher' || r.name === 'teacher') &&
+                        !user.classTeacherAssignments?.some((a: any) => a.is_primary && String(a.academic_year) === String(academicYear))
+                    )
+
+                    setTeachers(teacherList)
                 } catch (error) {
                     console.error("Failed to fetch teachers", error)
                 } finally {
@@ -50,6 +50,8 @@ export function TeacherAssignmentModal({ isOpen, onClose, onAssign, academicYear
             fetchTeachers()
         }
     }, [isOpen])
+
+    // WAIT: I need to import getUsers first. Retrying with multi_replace including import.
 
     const handleAssign = async () => {
         if (!selectedTeacherId) return
@@ -95,7 +97,7 @@ export function TeacherAssignmentModal({ isOpen, onClose, onAssign, academicYear
                                                 {teachers.map((teacher) => (
                                                     <CommandItem
                                                         key={teacher.id}
-                                                        value={teacher.full_name} // Search by name
+                                                        value={teacher.name} // Search by name
                                                         onSelect={() => setSelectedTeacherId(teacher.id)}
                                                         className="cursor-pointer"
                                                     >
@@ -106,7 +108,7 @@ export function TeacherAssignmentModal({ isOpen, onClose, onAssign, academicYear
                                                             )}
                                                         />
                                                         <div className="flex flex-col">
-                                                            <span className="font-medium">{teacher.full_name}</span>
+                                                            <span className="font-medium">{teacher.name}</span>
                                                             <span className="text-xs text-muted-foreground">{teacher.email}</span>
                                                         </div>
                                                     </CommandItem>

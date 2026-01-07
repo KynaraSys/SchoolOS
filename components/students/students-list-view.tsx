@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 
 import Link from "next/link"
-import { Search, Filter, Download, Plus, User, Trash2 } from "lucide-react"
+import { Search, Filter, Download, Plus, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,96 +18,106 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { StudentForm } from "@/components/students/student-form"
 import { StudentImportDialog } from "@/components/students/student-import-dialog"
 import { getStudents, exportStudents, deleteStudent } from "@/lib/api-users"
+import { getClasses } from "@/lib/api-academic"
 
 export default function StudentsListView() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [classFilter, setClassFilter] = useState("all")
+  const [classFilter, setClassFilter] = useState("all") // Stores class Name or "all"
+  const [streamFilter, setStreamFilter] = useState("all") // Stores stream name or "all"
   const [statusFilter, setStatusFilter] = useState("all")
   const [students, setStudents] = useState<any[]>([])
+  const [classes, setClasses] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const fetchStudents = async () => {
+    const fetchData = async () => {
       try {
-        const response = await getStudents() // Fetch from new endpoint
+        console.log("Fetching students and classes...");
 
-        // Map to UI structure
-        const mappedStudents = response.map((u: any) => ({
-          id: u.id.toString(),
-          // Use real data from relation if available, fallback to mock if using old data
-          admNo: u.student?.admission_number || `2024/${u.id.toString().padStart(4, '0')}`,
-          name: u.name,
-          // Class still mocked or retrieved from relation if we seeded classes (we didn't seed classes yet)
-          // Class still mocked or retrieved from relation if we seeded classes (we didn't seed classes yet)
-          class: u.student?.school_class ? `${u.student.school_class.name} ${u.student.school_class.stream || ''}` : 'Not Assigned',
-          attendance: u.student?.current_risk?.risk_score ?? Math.floor(Math.random() * (100 - 80) + 80), // Use Real Risk Score or Mock
-          riskLevel: u.student?.current_risk?.risk_level ?? 'low',
-          performance: Math.floor(Math.random() * (100 - 50) + 50), // Still mocked
-          feeStatus: ['paid', 'partial', 'overdue'][Math.floor(Math.random() * 3)], // Still mocked
-          status: u.is_active ? 'active' : 'inactive',
-          createdAt: new Date(u.created_at || new Date()),
-          profile_image: u.profile_image,
-        }))
-        setStudents(mappedStudents)
+        // Fetch independently to identify which one fails
+        let studentsData: any[] = [];
+        let classesData: any[] = [];
+
+        try {
+          studentsData = await getStudents();
+          console.log("Students fetched:", studentsData?.length);
+        } catch (e) {
+          console.error("Failed to fetch students:", e);
+        }
+
+        try {
+          classesData = await getClasses();
+          console.log("Classes fetched:", classesData?.length);
+        } catch (e) {
+          console.error("Failed to fetch classes:", e);
+        }
+
+        setClasses(classesData || []);
+
+        if (studentsData) {
+          // Map to UI structure
+          const mappedStudents = studentsData.map((u: any) => ({
+            id: u.id.toString(),
+            admNo: u.student?.admission_number || `2024/${u.id.toString().padStart(4, '0')}`,
+            name: u.name,
+            // Store raw class data for filtering
+            classId: u.student?.school_class?.id?.toString(),
+            className: u.student?.school_class?.name,
+            classStream: u.student?.school_class?.stream,
+            // Display string
+            classDisplay: u.student?.school_class ? `${u.student.school_class.name} ${u.student.school_class.stream || ''}` : 'Not Assigned',
+            attendance: u.student?.current_risk?.risk_score ?? Math.floor(Math.random() * (100 - 80) + 80),
+            riskLevel: u.student?.current_risk?.risk_level ?? 'low',
+            performance: Math.floor(Math.random() * (100 - 50) + 50),
+            feeStatus: ['paid', 'partial', 'overdue'][Math.floor(Math.random() * 3)],
+            status: u.is_active ? 'active' : 'inactive',
+            createdAt: new Date(u.created_at || new Date()),
+            profile_image: u.profile_image,
+            guardiansCount: u.guardians?.length || 0,
+          }))
+          setStudents(mappedStudents)
+        }
       } catch (error) {
-        console.error("Failed to fetch students", error)
+        console.error("Critical error in fetchData", error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchStudents()
+    fetchData()
   }, [])
 
 
   const filteredStudents = students.filter((student) => {
     // Search query filter
     const matchesSearch =
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.admNo.toLowerCase().includes(searchQuery.toLowerCase())
+      student.name.toLowerCase().replace(/\s+/g, "").includes(searchQuery.toLowerCase().replace(/\s+/g, "")) ||
+      student.admNo.toLowerCase().replace(/\s+/g, "").includes(searchQuery.toLowerCase().replace(/\s+/g, ""))
 
     // Class filter
     let matchesClass = true
     if (classFilter !== "all") {
-      // Normalize filter value "form1" -> "Form 1" to match data "Form 1A" start
-      const formattedFilter = classFilter.replace("form", "Form ")
-      matchesClass = student.class.startsWith(formattedFilter)
+      matchesClass = student.className === classFilter
+    }
+
+    // Stream filter
+    let matchesStream = true
+    if (classFilter !== "all" && streamFilter !== "all") {
+      matchesStream = student.classStream === streamFilter
     }
 
     // Status filter
     const matchesStatus = statusFilter === "all" || student.status === statusFilter
 
-    return matchesSearch && matchesClass && matchesStatus
+    return matchesSearch && matchesClass && matchesStream && matchesStatus
   })
 
-
-  const [studentToDelete, setStudentToDelete] = useState<string | null>(null)
-
-  const handleDelete = async () => {
-    if (!studentToDelete) return
-
-    try {
-      await deleteStudent(studentToDelete)
-      setStudents(students.filter(s => s.id !== studentToDelete))
-      setStudentToDelete(null)
-    } catch (error) {
-      console.error("Failed to delete student", error)
-      alert("Failed to delete student")
-    }
-  }
+  // Derive unique streams for the selected class to populate the stream dropdown
+  // We use class names for the filter to group all streams of the same grade level (e.g. "Grade 1")
+  const uniqueClassNames = Array.from(new Set(classes.map(c => c.name))).sort();
 
   // Calculate statistics
   const totalStudents = students.length
@@ -125,21 +135,6 @@ export default function StudentsListView() {
 
   return (
     <div className="space-y-6">
-      <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the student account and remove their data from the system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -166,24 +161,7 @@ export default function StudentsListView() {
             Export
           </Button>
           <StudentImportDialog onSuccess={() => {
-            // Re-fetch students on success
-            const fetchStudents = async () => {
-              const response = await getStudents()
-              const mappedStudents = response.map((u: any) => ({
-                id: u.id.toString(),
-                admNo: u.student?.admission_number || `2024/${u.id.toString().padStart(4, '0')}`,
-                name: u.name,
-                class: u.student?.school_class ? `${u.student.school_class.name} ${u.student.school_class.stream || ''}` : 'Not Assigned',
-                attendance: Math.floor(Math.random() * (100 - 80) + 80),
-                performance: Math.floor(Math.random() * (100 - 50) + 50),
-                feeStatus: ['paid', 'partial', 'overdue'][Math.floor(Math.random() * 3)],
-                status: u.is_active ? 'active' : 'inactive',
-                createdAt: new Date(u.created_at || new Date()),
-                profile_image: u.profile_image,
-              }))
-              setStudents(mappedStudents)
-            }
-            fetchStudents()
+            window.location.reload() // Simplest way to refresh for now
           }} />
           <Dialog>
             <DialogTrigger asChild>
@@ -256,18 +234,52 @@ export default function StudentsListView() {
               />
             </div>
             <div className="flex gap-2">
-              <Select value={classFilter} onValueChange={setClassFilter}>
-                <SelectTrigger className="w-[150px]">
+              {/* Dynamically populated Class Filter */}
+              <Select
+                value={classFilter}
+                onValueChange={(val) => {
+                  setClassFilter(val)
+                  setStreamFilter("all") // Reset stream when class changes
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Class" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Classes</SelectItem>
-                  <SelectItem value="form1">Form 1</SelectItem>
-                  <SelectItem value="form2">Form 2</SelectItem>
-                  <SelectItem value="form3">Form 3</SelectItem>
-                  <SelectItem value="form4">Form 4</SelectItem>
+                  {uniqueClassNames.map(name => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+
+              {/* Stream Filter - conditioned on Class Selection */}
+              <Select
+                value={streamFilter}
+                onValueChange={setStreamFilter}
+                disabled={classFilter === "all"}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Stream" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Streams</SelectItem>
+                  {/* 
+                     We need streams associated with the selected CLASS NAME.
+                   */}
+                  {classes
+                    .filter(c => c.name === classFilter)
+                    .map(c => c.stream)
+                    .filter(s => s)
+                    .filter((value, index, self) => self.indexOf(value) === index) // Unique
+                    .sort()
+                    .map(stream => (
+                      <SelectItem key={stream} value={stream}>{stream}</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Status" />
@@ -279,7 +291,12 @@ export default function StudentsListView() {
                   <SelectItem value="graduated">Graduated</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" onClick={() => {
+                setClassFilter("all")
+                setStatusFilter("all")
+                setStreamFilter("all")
+                setSearchQuery("")
+              }}>
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
@@ -316,7 +333,7 @@ export default function StudentsListView() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{student.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {student.admNo} · {student.class}
+                        {student.admNo} · {student.classDisplay}
                       </p>
                     </div>
                     <div className="hidden md:flex items-center gap-6">
@@ -349,25 +366,21 @@ export default function StudentsListView() {
                           {student.feeStatus === "paid" ? "Paid" : student.feeStatus === "partial" ? "Partial" : "Overdue"}
                         </Badge>
                       </div>
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground">Guardians</p>
+                        <div className="flex items-center justify-center gap-1">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          <p className="text-sm font-semibold">{student.guardiansCount}</p>
+                        </div>
+                      </div>
                     </div>
                   </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setStudentToDelete(student.id)
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
               ))
             )}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </CardContent >
+      </Card >
+    </div >
   )
 }

@@ -18,48 +18,49 @@ class MessageController extends Controller
     public function index()
     {
         $userId = Auth::id();
-        
+
+        // Optimized query: Fetch unread count as a subselect to avoid N+1 loop queries
         $conversations = Conversation::forUser($userId)
             ->with(['latestMessage', 'participants'])
+            ->select('conversations.*')
+            ->selectSub(function ($query) use ($userId) {
+                // Count messages where created_at > (my last_read_at)
+                // We need to join/lookup the pivot table for THIS conversation and THIS user
+                // Pivot table: conversation_participants
+                $query->selectRaw('count(*)')
+                      ->from('messages')
+                      ->whereColumn('messages.conversation_id', 'conversations.id')
+                      ->whereRaw("messages.created_at > COALESCE((
+                          SELECT last_read_at 
+                          FROM conversation_participants 
+                          WHERE conversation_participants.conversation_id = conversations.id 
+                          AND conversation_participants.user_id = ?
+                      ), '1970-01-01')", [$userId]);
+            }, 'unread_count_calculated') // alias
             ->get()
             ->map(function ($conversation) use ($userId) {
                 $otherParticipant = $conversation->participants->firstWhere('id', '!=', $userId);
                 $me = $conversation->participants->firstWhere('id', $userId);
                 
-                // If it's a group, we might handle display differently, but for direct, get the other user.
-                // Fallback for self-chat or broken data
                 $displayUser = $otherParticipant ?? Auth::user();
 
                 $lastMessage = $conversation->latestMessage;
-                
-                // Calculate unread: If message created AFTER my last_read_at
-                $lastRead = $me->pivot->last_read_at ?? null;
-                $unreadCount = 0;
-                
-                if ($lastMessage && (!$lastRead || $lastMessage->created_at > $lastRead)) {
-                    // This is a rough count. Ideally count messages > lastRead.
-                    // For performance, we can do a subquery or just boolean "has unread".
-                    // Let's do a strict count.
-                    $unreadCount = $conversation->messages()
-                        ->where('created_at', '>', $lastRead ?? '1970-01-01')
-                        ->count();
-                }
 
                 return [
                     'id' => $conversation->id,
                     'type' => $conversation->type,
-                    'user' => [ // Kept 'user' key for frontend compatibility where possible
+                    'user' => [
                         'id' => $displayUser->id,
                         'name' => $displayUser->name,
                         'role' => $displayUser->roles->first()->name ?? 'User',
-                        'avatar' => $displayUser->profile_image, // If available
+                        'avatar' => $displayUser->profile_image,
                     ],
                     'last_message' => $lastMessage ? [
                         'content' => $lastMessage->content,
                         'created_at' => $lastMessage->created_at,
                         'is_own' => $lastMessage->sender_id === $userId,
                     ] : null,
-                    'unread_count' => $unreadCount,
+                    'unread_count' => $conversation->unread_count_calculated, // Use the calculated value
                     'updated_at' => $conversation->updated_at,
                 ];
             })
@@ -102,8 +103,8 @@ class MessageController extends Controller
 
         if (!empty($query)) {
             $usersQuery->where(function($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                $q->where('name', 'ilike', "%{$query}%")
+                  ->orWhere('email', 'ilike', "%{$query}%");
             });
         } else {
              $usersQuery->orderBy('name', 'asc')->take(20);
@@ -142,13 +143,17 @@ class MessageController extends Controller
     {
         $userId = Auth::id();
         
-        // Check if $id is a Conversation ID or User ID.
-        // If it's a conversation, check access.
-        $conversation = Conversation::find($id);
+        $isUserLookup = request()->query('type') === 'user';
+        $conversation = null;
+
+        if (!$isUserLookup) {
+            // Standard lookup by Conversation ID
+            $conversation = Conversation::find($id);
+        }
 
         if (!$conversation) {
-           // Fallback: Check if it's a User ID and find the DIRECT conversation
-           // This helps migration from old API calls if any exist
+           // Fallback or Explicit User Lookup:
+           // Check if it's a User ID and find the DIRECT conversation
            $otherUserId = $id;
            $conversation = Conversation::where('type', 'direct')
                ->whereHas('participants', fn($q) => $q->where('user_id', $userId))
@@ -156,7 +161,13 @@ class MessageController extends Controller
                ->first();
                
            if (!$conversation) {
-               return response()->json([]); // No conversation yet
+               // If searching by User ID and no conversation exists, return empty array (valid new chat state)
+               if ($isUserLookup) {
+                    return response()->json([]);
+               }
+               // If searching by Conversation ID and not found, return empty or error.
+               // Existing logic returned [] for fallback failure, let's keep it.
+               return response()->json([]); 
            }
         }
 

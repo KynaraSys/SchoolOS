@@ -14,20 +14,29 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useRouter } from "next/navigation"
+import api from "@/lib/api"
+import { getPrincipalStats } from "@/lib/api-dashboard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
-import { getPrincipalStats } from "@/lib/api-dashboard"
+
 
 export default function IctAdminDashboard({ user }: { user?: User }) {
     const [stats, setStats] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [logs, setLogs] = useState<any[]>([])
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
                 const data = await getPrincipalStats()
                 setStats(data)
+
+                // Fetch System Logs
+                // Use standardized API client
+                const logsRes = await api.get('/system/logs');
+                setLogs(logsRes.data)
             } catch (error) {
                 console.error("Failed to fetch dashboard stats", error)
             } finally {
@@ -81,15 +90,31 @@ export default function IctAdminDashboard({ user }: { user?: User }) {
                         </div>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <p className="text-sm text-gray-400 mb-3">
-                            All systems are running smoothly. Database response time is normal.
-                        </p>
-                        <Button variant="outline" size="sm" className="gap-2 bg-transparent border-white/10 text-white hover:bg-white/10 hover:text-white" asChild>
-                            <Link href="/settings/logs">
-                                View System Logs
-                                <ArrowUpRight className="h-4 w-4" />
-                            </Link>
-                        </Button>
+                        <div className="mt-4 space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                            {logs.length > 0 ? (
+                                logs.map((log) => (
+                                    <div key={log.id} className="text-xs border-l-2 border-green-500/50 pl-2 py-1 bg-white/5 rounded-r">
+                                        <div className="flex justify-between items-center mb-0.5">
+                                            <span className="text-green-400 font-medium">{log.causer}</span>
+                                            <span className="text-gray-500 text-[10px]">{log.created_at}</span>
+                                        </div>
+                                        <p className="text-gray-300">{log.description}</p>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-gray-400 mb-3">
+                                    All systems are running smoothly. Database response time is normal.
+                                </p>
+                            )}
+                        </div>
+                        <div className="mt-4">
+                            <Button variant="outline" size="sm" className="gap-2 bg-transparent border-white/10 text-white hover:bg-white/10 hover:text-white w-full justify-center" asChild>
+                                <Link href="/settings/logs">
+                                    View All Logs
+                                    <ArrowUpRight className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
 

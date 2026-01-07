@@ -30,9 +30,7 @@ const classFormSchema = z.object({
         message: "Grade level must be at least 1.",
     }),
     stream: z.string().optional(),
-    curriculum: z.enum(["CBC", "8-4-4"], {
-        required_error: "You need to select a curriculum type.",
-    }),
+    curriculum: z.enum(["CBC", "8-4-4"]).default("CBC"),
 })
 
 type ClassFormValues = z.infer<typeof classFormSchema>
@@ -154,38 +152,12 @@ export function ClassForm({ initialData, onSuccess }: ClassFormProps) {
                         )}
                     />
                 </div>
+                {/* Curriculum selection hidden - defaults to CBC for new, preserves existing for edit */}
                 <FormField
                     control={form.control}
                     name="curriculum"
                     render={({ field }) => (
-                        <FormItem className="space-y-3">
-                            <FormLabel>Curriculum</FormLabel>
-                            <FormControl>
-                                <RadioGroup
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                    className="flex flex-col space-y-1"
-                                >
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl>
-                                            <RadioGroupItem value="CBC" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">
-                                            CBC (Competency Based Curriculum)
-                                        </FormLabel>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl>
-                                            <RadioGroupItem value="8-4-4" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">
-                                            8-4-4 System
-                                        </FormLabel>
-                                    </FormItem>
-                                </RadioGroup>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
+                        <input type="hidden" {...field} value={field.value} />
                     )}
                 />
                 <Button type="submit" disabled={form.formState.isSubmitting}>

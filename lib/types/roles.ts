@@ -7,17 +7,23 @@ export type UserRole =
   | "parent"
   | "student"
   | "ict_admin"
-  | "super_admin"
+  | "admin"
 
 export interface User {
   id: string
   email: string
   full_name: string
+  name: string // Added to match backend
   role: UserRole
   school_id: string
   avatar_url?: string
   isClassTeacher?: boolean // Optional flag to distinguish class teachers from subject teachers
-  is_super_admin?: boolean // Global override flag
+  classTeacherAssignments?: { // For filtering
+    id: number
+    class_id: number
+    academic_year: string
+    is_primary: boolean
+  }[]
 }
 
 export interface School {

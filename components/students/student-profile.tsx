@@ -1,478 +1,494 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getStudentProfile, deleteStudent } from "@/lib/api-users"
-import { getIncidents, updateIncident, Incident } from "@/lib/api-discipline"
+import { useAuth } from "@/components/auth/auth-provider"
+import { getLearnerProfile, updateLearnerProfile, LearnerProfile } from "@/lib/api-learner-profile"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { CalendarDays, GraduationCap, FileWarning, Phone, Mail, MapPin, Receipt, Loader2, DollarSign, User, Trash2 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { StudentForm } from "@/components/students/student-form"
-import { GuardianManagement } from "@/components/guardians/guardian-management"
-import { Label } from "@/components/ui/label"
+import { CalendarDays, Phone, Mail, MapPin, User, Loader2, BookOpen, GraduationCap, Heart, Star, FileText, ShieldCheck, TrendingUp } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ReportIssueModal } from "@/components/discipline/report-issue-modal"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { RemarksTab } from "@/components/remarks/student-remarks-tab"
+import { GuardianCard } from "@/components/students/student-guardian-card"
+import { RetentionTab } from "@/components/students/student-retention-tab"
 
 export default function StudentProfile({ studentId }: { studentId: string }) {
-    const [student, setStudent] = useState<any>(null)
-    const [incidents, setIncidents] = useState<Incident[]>([])
+    const { hasRole } = useAuth()
+    const isTeacher = hasRole("teacher")
+    const [profile, setProfile] = useState<LearnerProfile | null>(null)
     const [isLoading, setIsLoading] = useState(true)
-    const [isDeleting, setIsDeleting] = useState(false)
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-    const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
 
+    // Edit state
+    // Edit state (Core Details only)
+    const [editForm, setEditForm] = useState({
+        special_needs: '',
+        upi: '',
+        enrollment_status: ''
+    })
 
     const router = useRouter()
 
     useEffect(() => {
-        const fetchStudent = async () => {
+        const fetchProfile = async () => {
             try {
-                const data = await getStudentProfile(studentId)
-                setStudent(data)
-
-                if (data.student?.id) {
-                    const incidentsData = await getIncidents(data.student.id)
-                    setIncidents(incidentsData)
-                }
+                // Sanitize ID in case of legacy URL patterns (e.g. s-123)
+                const cleanId = studentId.replace(/^s-/, '')
+                const data = await getLearnerProfile(cleanId)
+                setProfile(data)
+                // Initialize form with existing data
+                setEditForm({
+                    special_needs: data.student.special_needs || '',
+                    upi: data.student.upi || '',
+                    enrollment_status: data.student.enrollment_status || 'active'
+                })
             } catch (error) {
-                console.error("Failed to fetch student data", error)
+                console.error("Failed to fetch learner profile", error)
+                toast.error("Failed to load profile data")
             } finally {
                 setIsLoading(false)
             }
         }
-        fetchStudent()
+        fetchProfile()
     }, [studentId])
 
-    const fetchStudentIncidents = async () => {
-        if (student?.student?.id) {
-            try {
-                const incidentsData = await getIncidents(student.student.id)
-                setIncidents(incidentsData)
-            } catch (error) {
-                console.error("Failed to fetch incidents", error)
-            }
-        }
-    }
-
-    const handleDelete = async () => {
-        setIsDeleting(true)
+    const handleSaveCoreDetails = async () => {
+        setIsSaving(true)
         try {
-            await deleteStudent(studentId)
-            router.push('/students')
+            const cleanId = studentId.replace(/^s-/, '')
+            await updateLearnerProfile(cleanId, editForm)
+            toast.success("Profile updated successfully")
+            // refresh data
+            const data = await getLearnerProfile(cleanId)
+            setProfile(data)
         } catch (error) {
-            console.error("Failed to delete student", error)
-            alert("Failed to delete student")
-            setIsDeleting(false)
+            console.error(error)
+            toast.error("Failed to save profile")
+        } finally {
+            setIsSaving(false)
         }
     }
-
-
 
     if (isLoading) {
         return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
     }
 
-    if (!student) {
-        return <div className="text-center p-8">Student not found</div>
+    if (!profile) {
+        return <div className="text-center p-8">Learner not found</div>
     }
 
-    // Calculate Fees from Real Data
-    const feeTotal = 45000; // Fixed term fee for demo
-    const payments = student.student?.payments || [];
-    const feePaid = payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-    const feeBalance = feeTotal - feePaid;
-    const feeStatus = feeBalance <= 0 ? 'Cleared' : feeBalance < 10000 ? 'Partial' : 'Pending';
+    const { student } = profile
 
     return (
         <div className="space-y-6">
-            <ReportIssueModal
-                open={isReportModalOpen}
-                onOpenChange={setIsReportModalOpen}
-                onSuccess={fetchStudentIncidents}
-                preselectedStudent={{
-                    id: student.student?.id,
-                    name: student.name,
-                    admission_number: student.student?.admission_number || 'N/A'
-                }}
-            />
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Student Record?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete <strong>{student.name}</strong> and remove all associated data including academic records and fee history.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => {
-                                e.preventDefault()
-                                handleDelete()
-                            }}
-                            className="bg-destructive hover:bg-destructive/90"
-                            disabled={isDeleting}
-                        >
-                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {/* Header / BIO Card */}
+            <Card className="overflow-hidden bg-gradient-to-br from-card to-muted/20 border-primary/10">
+                <div className="px-6 py-8">
+                    <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                        <Avatar className="h-24 w-24 ring-4 ring-background shadow-xl">
+                            <AvatarImage src={student.profile_image || "/placeholder-student.svg"} className="object-cover" />
+                            <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary">{student.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
 
-            {/* Profile Header */}
-            <Card className="overflow-hidden">
-                <div className="px-6 py-6">
-                    <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-20 w-20">
-                                <AvatarImage src={student.profile_image || "/placeholder-student.jpg"} className="object-cover" />
-                                <AvatarFallback className="text-xl">{student.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="mb-1">
-                                <h1 className="text-xl font-bold">{student.name}</h1>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <span>ADM: {student.student?.admission_number || 'N/A'}</span>
-                                    <span>•</span>
+                        <div className="flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="text-2xl font-bold tracking-tight">{student.name}</h1>
+                                <Badge variant={
+                                    student.retention_status === 'anonymized' ? 'outline' :
+                                        student.retention_status === 'archived' ? 'secondary' :
+                                            student.enrollment_status === 'active' ? 'default' : 'secondary'
+                                } className="uppercase text-xs"
+                                >
+                                    {student.retention_status === 'anonymized' ? 'Anonymized' :
+                                        student.retention_status === 'archived' ? 'Archived' :
+                                            student.enrollment_status || 'Active'}
+                                </Badge>
+                                {student.upi && <Badge variant="outline" className="font-mono">UPI: {student.upi}</Badge>}
+                                {student.learning_pathway && (
+                                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-800 border-indigo-200">
+                                        {student.learning_pathway}
+                                    </Badge>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-2">
+                                <div className="flex items-center gap-1.5">
+                                    <User className="h-4 w-4" />
+                                    <span>{student.admission_number}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <BookOpen className="h-4 w-4" />
                                     <span>
-                                        {student.student?.school_class
-                                            ? `${student.student.school_class.name} ${student.student.school_class.stream || ''}`
-                                            : 'Class Not Assigned'}
+                                        {student.school_class
+                                            ? `${student.school_class.name} ${student.school_class.stream || ''}`
+                                            : 'No Class Assigned'}
                                     </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <CalendarDays className="h-4 w-4" />
+                                    <span>{student.dob || 'DOB Not set'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <User className="h-4 w-4" />
+                                    <span>{student.gender}</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 w-full md:w-auto justify-start md:justify-end">
-                            <Button variant="outline" size="sm">Message Parent</Button>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button
-                                        size="sm"
-                                        className="bg-amber-500 hover:bg-amber-600 text-white border-amber-600 hover:shadow-[0_0_15px_rgba(245,158,11,0.6)] transition-all duration-300"
-                                    >
-                                        Edit Profile
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                                    <DialogHeader>
-                                        <DialogTitle>Edit Student Profile</DialogTitle>
-                                    </DialogHeader>
-                                    <StudentForm
-                                        studentId={studentId}
-                                        initialData={student}
-                                        onSuccess={() => {
-                                            // Ideally we should refetch here, but for now a reload works or we pass a refetch callback
-                                            window.location.reload()
-                                        }}
-                                    />
-                                </DialogContent>
-                            </Dialog>
 
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setShowDeleteDialog(true)}
-                                className="gap-2"
-                            >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Delete
+                        <div className="flex flex-col gap-2 min-w-[140px]">
+                            {!isTeacher && (
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button className="w-full" disabled={student.retention_status === 'archived' || student.retention_status === 'anonymized'}>
+                                            Edit Details
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                        <DialogHeader>
+                                            <DialogTitle>Update Core Details</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid gap-2">
+                                                <Label>Unique Personal Identifier (UPI)</Label>
+                                                <Input
+                                                    value={editForm.upi}
+                                                    onChange={(e) => setEditForm({ ...editForm, upi: e.target.value })}
+                                                    placeholder="Enter NEMIS UPI"
+                                                />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label>Special Needs / Medical Conditions</Label>
+                                                <Textarea
+                                                    value={editForm.special_needs}
+                                                    onChange={(e) => setEditForm({ ...editForm, special_needs: e.target.value })}
+                                                    placeholder="Describe any special needs or conditions..."
+                                                />
+                                            </div>
+                                            <Button onClick={handleSaveCoreDetails} disabled={isSaving}>
+                                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                                Save Changes
+                                            </Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
+                            <Button variant="outline" className="w-full" onClick={() => router.push(`/communication?recipientId=${student.user_id || ''}`)}>
+                                Message Parent
                             </Button>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 pt-4 border-t border-border">
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                            <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">DOB: {student.student?.dob || 'Not set'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                            <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">{student.phone || 'No Phone'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                            <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">{student.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                            <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">{student.student?.address || 'No Address'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">Parent: {student.student?.parent_email || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm min-w-0">
-                            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">Gender: {student.student?.gender || 'N/A'}</span>
                         </div>
                     </div>
                 </div>
             </Card>
 
-            {/* Details Tabs */}
-            <Tabs defaultValue="fees" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="fees">Fees & Payments</TabsTrigger>
-                    <TabsTrigger value="guardians">Parents & Guardians</TabsTrigger>
-                    <TabsTrigger value="academic">Academic Performance</TabsTrigger>
-                    <TabsTrigger value="attendance">Attendance History</TabsTrigger>
+            <Tabs defaultValue="overview" className="space-y-6">
+                <TabsList className="bg-background border p-1 h-auto flex-wrap justify-start">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="competency">Competency Progress</TabsTrigger>
+                    <TabsTrigger value="evidence">Evidence Portfolio</TabsTrigger>
+                    <TabsTrigger value="attendance">Attendance & Engagement</TabsTrigger>
+                    <TabsTrigger value="contact">Family & Contact</TabsTrigger>
+                    <TabsTrigger value="official-remarks">Remarks & Feedback</TabsTrigger>
+
                     <TabsTrigger value="discipline">Discipline</TabsTrigger>
+                    {!isTeacher && <TabsTrigger value="retention">Data Retention</TabsTrigger>}
                 </TabsList>
 
-                <TabsContent value="fees">
-                    <div className="grid gap-4 md:grid-cols-3">
+                {/* OVERVIEW TAB */}
+                <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-500">
+                    <div className="grid md:grid-cols-2 gap-6">
                         <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium">Fee Balance</CardTitle>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Star className="h-5 w-5 text-amber-500" />
+                                    Strengths & Abilities
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className={`text-2xl font-bold ${feeBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    KES {feeBalance.toLocaleString()}
-                                </div>
-                                <p className="text-xs text-muted-foreground">Due Date: 30 Dec 2024</p>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium">Amount Paid</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-green-600">KES {feePaid.toLocaleString()}</div>
-                                <p className="text-xs text-muted-foreground">
-                                    {payments.length > 0 ? `Last payment: ${payments[payments.length - 1].payment_date}` : 'No payments yet'}
+                                <p className="text-muted-foreground whitespace-pre-wrap">
+                                    {profile.cbe_profile?.strengths || 'No strengths recorded yet.'}
                                 </p>
                             </CardContent>
                         </Card>
+
                         <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium">Total Fees</CardTitle>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Heart className="h-5 w-5 text-rose-500" />
+                                    Talents & Interests
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">KES {feeTotal.toLocaleString()}</div>
-                                <p className="text-xs text-muted-foreground">Term 3 2024</p>
+                                <p className="text-muted-foreground whitespace-pre-wrap">
+                                    {profile.cbe_profile?.talents_interests || 'No talents recorded yet.'}
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Areas for Support</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground whitespace-pre-wrap">
+                                    {profile.cbe_profile?.areas_for_support || 'No support areas recorded.'}
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Social & Emotional Development</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground whitespace-pre-wrap">
+                                    {profile.cbe_profile?.social_emotional_notes || 'No notes available.'}
+                                </p>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <Card className="mt-4">
-                        <CardHeader>
-                            <CardTitle>Fee Structure & History</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b text-left">
-                                        <th className="py-2">Description</th>
-                                        <th className="py-2">Date</th>
-                                        <th className="py-2">Amount (KES)</th>
-                                        <th className="py-2">Method</th>
-                                        <th className="py-2">Ref</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b bg-muted/20">
-                                        <td className="py-3 font-medium">Tuition Fees - Term 3</td>
-                                        <td>01 Sep 2024</td>
-                                        <td>30,000</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                    </tr>
-                                    <tr className="border-b bg-muted/20">
-                                        <td className="py-3 font-medium">Lunch Program</td>
-                                        <td>01 Sep 2024</td>
-                                        <td>15,000</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                    </tr>
-                                    {payments.map((payment: any) => (
-                                        <tr key={payment.id} className="border-b hover:bg-muted/50">
-                                            <td className="py-3">
-                                                <div className="flex flex-col">
-                                                    <span>Payment - {payment.type}</span>
-                                                    <span className="text-xs text-muted-foreground">{payment.description}</span>
-                                                </div>
-                                            </td>
-                                            <td>{payment.payment_date}</td>
-                                            <td className="text-green-600 font-medium">-{Number(payment.amount).toLocaleString()}</td>
-                                            <td><Badge variant="outline">{payment.method}</Badge></td>
-                                            <td className="font-mono text-xs">{payment.transaction_reference || '-'}</td>
-                                        </tr>
-                                    ))}
-                                    {payments.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} className="py-4 text-center text-muted-foreground">No payments recorded</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </CardContent>
-                    </Card>
+                    {/* CBC Assessment Snapshot */}
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <Card className="md:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-lg text-blue-900">Latest Assessment Status</CardTitle>
+                                <CardDescription>Current performance indication based on recent observations</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center gap-4">
+                                    <div className="h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg ring-4 ring-blue-100">
+                                        ME
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="font-semibold text-blue-900">Meeting Expectations</div>
+                                        <div className="text-sm text-blue-700">Student is consistently demonstrating the required competencies for this level.</div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Trend</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex flex-col items-center justify-center h-full py-2">
+                                    <div className="text-green-600 flex items-center gap-1 font-bold">
+                                        <TrendingUp className="h-5 w-5" />
+                                        <span>Improving</span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground mt-1">vs Last Term</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {!isTeacher && student.special_needs && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                            <h3 className="font-semibold text-amber-800 mb-1 flex items-center gap-2">
+                                <FileText className="h-4 w-4" /> Special Needs / Medical Information
+                            </h3>
+                            <p className="text-amber-700">{student.special_needs}</p>
+                        </div>
+                    )}
                 </TabsContent>
 
-                <TabsContent value="academic">
+                {/* COMPETENCY PROGRESS TAB */}
+                <TabsContent value="competency" className="space-y-6 animate-in fade-in-50 duration-500">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Subject Performance (Mock)</CardTitle>
+                            <CardTitle>Competency Mastery Overview</CardTitle>
+                            <CardDescription>Progress across core competencies</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-muted-foreground">Performance data integration pending...</p>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                            <div className="grid gap-4 md:grid-cols-3 mb-8">
+                                <div className="bg-green-50 p-4 rounded-lg border border-green-100 text-center">
+                                    <div className="text-3xl font-bold text-green-600">{profile.competency_progress.mastered_count}</div>
+                                    <div className="text-sm text-green-800 font-medium">Mastering</div>
+                                </div>
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
+                                    <div className="text-3xl font-bold text-blue-600">{profile.competency_progress.in_progress_count}</div>
+                                    <div className="text-sm text-blue-800 font-medium">Developing</div>
+                                </div>
+                                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100 text-center">
+                                    <div className="text-3xl font-bold text-orange-600">{profile.competency_progress.emerging_count}</div>
+                                    <div className="text-sm text-orange-800 font-medium">Emerging</div>
+                                </div>
+                            </div>
 
-                <TabsContent value="attendance">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Attendance Risk Assessment</CardTitle>
-                            <CardDescription>AI-Powered Early Warning System</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {student.student?.current_risk ? (
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
-                                        <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Current Risk Score</p>
-                                            <div className="flex items-baseline gap-2">
-                                                <h2 className="text-3xl font-bold">{student.student.current_risk.risk_score}</h2>
-                                                <span className="text-muted-foreground">/ 100</span>
-                                            </div>
+                            <div className="space-y-4">
+                                {profile.competency_progress.breakdown.map((item: any, idx: number) => (
+                                    <div key={idx} className="flex flex-col p-4 border rounded-lg hover:bg-muted/30 transition-colors bg-card">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="font-semibold text-base">{item.area}</span>
+                                            <Badge variant={item.level === 'Mastering' || item.level === 'Meeting' ? 'default' : item.level === 'Developing' ? 'secondary' : 'outline'}>
+                                                {item.level}
+                                            </Badge>
                                         </div>
-                                        <Badge
-                                            variant={student.student.current_risk.risk_level === 'high' ? 'destructive' : 'outline'}
-                                            className={`px-4 py-1 text-lg ${student.student.current_risk.risk_level === 'medium' ? 'bg-yellow-500 text-white border-none' : ''} ${student.student.current_risk.risk_level === 'low' ? 'bg-green-500 text-white border-none' : ''}`}
-                                        >
-                                            {student.student.current_risk.risk_level.toUpperCase()} RISK
+                                        <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+                                            {item.remarks || "No remarks recorded."}
+                                        </p>
+                                        {item.evidence_count > 0 && (
+                                            <div className="flex items-center gap-1 text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded w-fit">
+                                                <FileText className="h-3 w-3" />
+                                                {item.evidence_count} Evidence Items
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* EVIDENCE PORTFOLIO TAB */}
+                <TabsContent value="evidence" className="animate-in fade-in-50 duration-500">
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {profile.evidence_portfolio.length > 0 ? (
+                            profile.evidence_portfolio.map((item: any) => (
+                                <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                                    <div className="aspect-video bg-muted relative">
+                                        {/* Placeholder for image/media */}
+                                        <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
+                                        <Badge className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 backdrop-blur-md border-none text-white">
+                                            {item.type}
                                         </Badge>
                                     </div>
+                                    <CardHeader className="p-4 pb-2">
+                                        <CardTitle className="text-base truncate">{item.title}</CardTitle>
+                                        <CardDescription>{new Date(item.date).toLocaleDateString()}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-4 pt-0">
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {item.competencies.map((c: string, i: number) => (
+                                                <span key={i} className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground border">
+                                                    {c}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        ) : (
+                            <div className="col-span-full text-center py-12 text-muted-foreground">
+                                <p>No evidenced items uploaded yet.</p>
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
 
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <Card>
-                                            <CardHeader className="pb-2">
-                                                <CardTitle className="text-sm">Contributing Factors</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="space-y-2">
-                                                {Object.entries(student.student.current_risk.primary_factors || {}).map(([key, value]) => (
-                                                    <div key={key} className="flex justify-between text-sm">
-                                                        <span className="capitalize text-muted-foreground">{key.replace(/_/g, ' ')}</span>
-                                                        <span className="font-medium">{String(value)}</span>
-                                                    </div>
-                                                ))}
-                                            </CardContent>
-                                        </Card>
-                                        <Card>
-                                            <CardHeader className="pb-2">
-                                                <CardTitle className="text-sm">Trend Analysis</CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <p className="text-sm text-muted-foreground mb-4">
-                                                    Analysis based on last evaluation at {new Date(student.student.current_risk.last_evaluated_at).toLocaleDateString()}
-                                                </p>
-                                                {/* Placeholder for chart */}
-                                                <div className="h-24 bg-muted/20 rounded flex items-center justify-center text-xs text-muted-foreground">
-                                                    Trend Visualization
-                                                </div>
-                                            </CardContent>
-                                        </Card>
+                {/* ATTENDANCE TAB */}
+                <TabsContent value="attendance" className="animate-in fade-in-50 duration-500">
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Attendance Overview</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center justify-center p-6">
+                                    <div className="text-center">
+                                        <div className="text-5xl font-bold text-primary mb-2">{profile.attendance_summary.present}%</div>
+                                        <p className="text-muted-foreground">Present Rate</p>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    <p>No risk assessment available for this term.</p>
-                                    <p className="text-xs mt-2">Run 'php artisan attendance:calculate-risk' to generate.</p>
+                                <div className="grid grid-cols-2 gap-4 mt-4">
+                                    <div className="p-3 bg-destructive/10 rounded-lg text-center">
+                                        <div className="font-bold text-destructive">{profile.attendance_summary.absent}</div>
+                                        <div className="text-xs text-muted-foreground">Days Absent</div>
+                                    </div>
+                                    <div className="p-3 bg-orange-100 rounded-lg text-center">
+                                        <div className="font-bold text-orange-700">{profile.attendance_summary.late}</div>
+                                        <div className="text-xs text-muted-foreground font-medium text-orange-800/70">Days Late</div>
+                                    </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                        {/* Add engagement charts here later */}
+                    </div>
                 </TabsContent>
 
-                <TabsContent value="discipline">
+                {/* FAMILY & CONTACT TAB */}
+                <TabsContent value="contact" className="animate-in fade-in-50 duration-500">
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {student.guardians && student.guardians.length > 0 ? (
+                            student.guardians.map((guardian: any) => (
+                                <GuardianCard key={guardian.id} guardian={guardian} studentId={studentId} />
+                            ))
+                        ) : (
+                            <div className="col-span-full">
+                                <Card>
+                                    <CardContent className="py-8 text-center text-muted-foreground">
+                                        <p>No guardian information linked to this learner.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        <Card className="bg-muted/30 border-dashed col-span-full md:col-span-1">
+                            <CardContent className="flex flex-col items-center justify-center py-8 h-full">
+                                <ShieldCheck className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                                <p className="text-sm font-medium text-muted-foreground">Strict Privacy Controls Active</p>
+                                <p className="text-xs text-muted-foreground/70 text-center mt-1">
+                                    Contact details are restricted based on your role.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                {/* OFFICIAL REMARKS TAB (NEW SYSTEM) */}
+                <TabsContent value="official-remarks" className="animate-in fade-in-50 duration-500">
+                    <RemarksTab studentId={studentId.replace(/^s-/, '')} />
+                </TabsContent>
+
+
+
+                {/* DISCIPLINE TAB */}
+                <TabsContent value="discipline" className="animate-in fade-in-50 duration-500">
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>Disciplinary Record</CardTitle>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700"
-                                    onClick={() => setIsReportModalOpen(true)}
-                                >
-                                    <FileWarning className="h-3.5 w-3.5 mr-2" />
-                                    Log Incident
-                                </Button>
-                            </div>
+                            <CardTitle>Disciplinary Summary</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {incidents.length > 0 ? (
-                                <div className="space-y-4">
-                                    {incidents.map((incident) => (
-                                        <div key={incident.id} className="border p-4 rounded-lg">
-                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-2">
-                                                <div>
-                                                    <h4 className="font-semibold text-lg">{incident.title}</h4>
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                                                        <CalendarDays className="h-3.5 w-3.5" />
-                                                        <span>{new Date(incident.occurred_at).toLocaleDateString()}</span>
-                                                        <span className="text-xs border px-1.5 rounded bg-muted/50 uppercase">{incident.severity}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 w-full md:w-auto">
-                                                    <Badge variant={
-                                                        incident.status === 'resolved' ? 'default' :
-                                                            incident.status === 'dismissed' ? 'secondary' :
-                                                                incident.status === 'escalated' ? 'destructive' : 'outline'
-                                                    } className="capitalize">
-                                                        {incident.status}
-                                                    </Badge>
-
-                                                    {/* Review button removed as requested */}
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-muted/10 p-3 rounded-md mb-2">
-                                                <p className="text-sm">{incident.description}</p>
-
-                                                {incident.action_taken && (
-                                                    <div className="mb-2 text-sm">
-                                                        <span className="font-medium text-muted-foreground">Action Taken: </span>
-                                                        <span>{incident.action_taken}</span>
-                                                    </div>
-                                                )}
-
-                                                <div className="flex justify-between items-center text-xs text-muted-foreground pt-2 border-t">
-                                                    <span>Reporter: {incident.reporter?.name || 'System / Unknown'}</span>
-                                                    <span>Recorded: {new Date(incident.created_at).toLocaleDateString()}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-10 text-muted-foreground">
-                                    <FileWarning className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                                    <p>No active disciplinary records found.</p>
-                                </div>
-                            )}
+                            <div className="text-3xl font-bold mb-4">{profile.discipline_summary.total_incidents} <span className="text-base font-normal text-muted-foreground">Total Incidents</span></div>
+                            <div className="space-y-4">
+                                {profile.discipline_summary.recent_incidents.map((inc: any) => (
+                                    <div key={inc.id} className="p-3 border rounded-lg bg-muted/20">
+                                        <div className="font-semibold">{inc.title}</div>
+                                        <p className="text-sm text-muted-foreground">{inc.description}</p>
+                                        <div className="text-xs mt-2 text-muted-foreground">{new Date(inc.occurred_at).toLocaleDateString()} • {inc.severity}</div>
+                                    </div>
+                                ))}
+                                {profile.discipline_summary.recent_incidents.length === 0 && (
+                                    <p className="text-muted-foreground">No disciplinary incidents recorded.</p>
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="guardians">
-                    <GuardianManagement studentId={studentId} />
-                </TabsContent>
-            </Tabs >
-        </div >
+
+                {/* DATA RETENTION TAB */}
+                {!isTeacher && (
+                    <TabsContent value="retention" className="animate-in fade-in-50 duration-500">
+                        <RetentionTab
+                            studentId={studentId.replace(/^s-/, '')}
+                            retentionStatus={student.retention_status || (student.enrollment_status === 'active' ? 'active' : 'archived')}
+                            archivedAt={student.archived_at}
+                            anonymizedAt={student.anonymized_at}
+                            onUpdate={() => {
+                                // Re-fetch profile data
+                                const cleanId = studentId.replace(/^s-/, '')
+                                getLearnerProfile(cleanId).then(data => setProfile(data))
+                            }}
+                        />
+                    </TabsContent>
+                )}
+            </Tabs>
+        </div>
     )
 }

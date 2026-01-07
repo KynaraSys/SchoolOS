@@ -29,18 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
 
     useEffect(() => {
-        // Init auth from storage
-        const token = localStorage.getItem('token');
+        // Init auth from storage - only check for stored user data
+        // Token is now stored in HttpOnly cookie (not accessible via JS)
         const storedUser = localStorage.getItem('user');
 
-        if (token && storedUser) {
+        if (storedUser) {
             setUser(JSON.parse(storedUser));
         }
         setIsLoading(false);
 
         // Listen for storage changes to sync logout across tabs
         const handleStorageChange = (event: StorageEvent) => {
-            if (event.key === 'token' && event.newValue === null) {
+            if (event.key === 'user' && event.newValue === null) {
                 setUser(null);
                 router.push('/auth/login');
             }
@@ -57,9 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.addEventListener('auth:force-logout', handleForceLogout);
 
         // Heartbeat Check (Every 60s)
+        // Cookie-based auth is verified server-side, so we just ping to verify session
         const heartbeat = setInterval(() => {
-            const token = localStorage.getItem('token');
-            if (token) {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
                 // Call a lightweight endpoint to verify session validity
                 // If this fails with 401/423, the interceptor will trigger force-logout
                 api.get('/user').catch(() => { /* handled by interceptor */ });
@@ -85,8 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, [router]);
 
-    const login = (token: string, userData: any) => {
-        localStorage.setItem('token', token);
+    const login = (_token: string, userData: any) => {
+        // Token is now stored in HttpOnly cookie by the server
+        // We only store user data in localStorage for UI purposes (non-sensitive)
 
         // Normalize user data if needed (ensure roles/permissions are arrays of strings)
         // detailed user object from backend includes relations
@@ -96,18 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let primaryRole = (rolesList[0]?.toLowerCase().replace(/\s+/g, '_') as any) || "student";
 
         // Map backend 'Admin' role to 'super_admin' or just keep it if it normalizes correctly.
-        // If backend says "Admin", it becomes "admin". strict UserRole might not have "admin".
-        // Let's assume Admin -> super_admin for now if "admin" isn't in UserRole, 
-        // OR better, add "admin" to UserRole if needed. 
-        // But for this specific request: Super Admin -> super_admin.
-
-        if (primaryRole === 'admin') {
-            primaryRole = 'super_admin'; // Treat generic Admin as Super Admin
-        }
+        // If backend says "Admin", it becomes "admin". straight UserRole might not have "admin".
+        // We added "admin" to UserRole, so "admin" is valid now.
 
         const normalizedUser: AuthUser = {
             id: String(userData.id), // Ensure string id
             full_name: userData.name,
+            name: userData.name,
             email: userData.email,
             role: primaryRole, // Map first role to primary role
             school_id: "default-school", // Placeholder as backend doesn't send this yet
@@ -115,7 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             permissions: userData.permissions ? userData.permissions.map((p: any) => p.name) : [],
 
             isClassTeacher: !!userData.is_class_teacher, // Use real backend flag
-            is_super_admin: !!userData.is_super_admin,  // Use real backend flag
         };
 
         // If backend sends flattened arrays already (modified AuthController.php in step 36 sends full relations)
@@ -128,11 +124,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            await api.post('/auth/logout');
-        } catch (error) {
-            console.error("Logout failed", error);
+            // Call Next.js logout route directly (clears cookie and revokes backend token)
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
         } finally {
-            localStorage.removeItem('token');
+            // Token cookie is cleared by the logout API route
             localStorage.removeItem('user');
             setUser(null);
             router.push('/auth/login');
@@ -141,9 +139,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const hasRole = (role: string | string[]) => {
         if (!user) return false;
-
-        // Super Admin Flag Override
-        if (user.is_super_admin) return true;
 
         if (!user.roles) return false;
 
@@ -156,15 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const hasPermission = (permission: string) => {
         if (!user) return false;
-
-        // Super Admin Flag Override
-        if (user.is_super_admin) return true;
-
-        if (!user.roles) return false;
-        const userRolesLower = user.roles.map(r => r.toLowerCase());
-
-        // Legacy check: fallback if is_super_admin is missing but role exists
-        if (userRolesLower.includes('super admin') || userRolesLower.includes('super_admin')) return true;
 
         return user.permissions ? user.permissions.includes(permission) : false;
     };

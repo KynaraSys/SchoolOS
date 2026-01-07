@@ -1,5 +1,5 @@
+import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
-
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -14,7 +14,6 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, CreateUserDTO, UpdateUserDTO, UserRole } from "@/lib/types/user"
 import { createUser, updateUser, getRoles } from "@/lib/api-users"
 import { useRouter } from "next/navigation"
@@ -32,8 +31,8 @@ const userFormSchema = z.object({
     }),
     password: z.string().optional(),
     password_confirmation: z.string().optional(),
-    role: z.string().min(1, {
-        message: "Please select a role",
+    roles: z.array(z.string()).min(1, {
+        message: "Please select at least one role",
     }),
     is_active: z.boolean().default(true),
 }).refine((data) => {
@@ -73,13 +72,19 @@ export function UserForm({ initialData, onSuccess }: UserFormProps) {
         fetchRoles()
     }, [])
 
+    const SECONDARY_ROLES = ["Discipline Master", "Games Master", "Boarding Master", "Senior Teacher", "HOD"];
+
+    const displayedRoles = initialData
+        ? roles
+        : roles.filter(role => !SECONDARY_ROLES.includes(role.name));
+
     const form = useForm<UserFormValues>({
         resolver: zodResolver(userFormSchema),
         defaultValues: initialData
             ? {
                 name: initialData.name,
                 email: initialData.email,
-                role: initialData.roles && initialData.roles.length > 0 ? initialData.roles[0].name : "",
+                roles: initialData.roles ? initialData.roles.map(r => r.name) : [],
                 password: "",
                 password_confirmation: "",
                 is_active: initialData.is_active,
@@ -87,7 +92,7 @@ export function UserForm({ initialData, onSuccess }: UserFormProps) {
             : {
                 name: "",
                 email: "",
-                role: "",
+                roles: [],
                 password: "",
                 password_confirmation: "",
                 is_active: true,
@@ -97,11 +102,10 @@ export function UserForm({ initialData, onSuccess }: UserFormProps) {
     async function onSubmit(data: UserFormValues) {
         try {
             if (initialData) {
-                // Only include password if provided
                 const updateData: UpdateUserDTO = {
                     name: data.name,
                     email: data.email,
-                    role: data.role as UserRole,
+                    roles: data.roles as any,
                     is_active: data.is_active,
                 }
                 if (data.password) {
@@ -110,21 +114,22 @@ export function UserForm({ initialData, onSuccess }: UserFormProps) {
                 }
 
                 await updateUser(initialData.id, updateData)
-                toast({
-                    title: "Success",
-                    description: "User updated successfully.",
-                })
             } else {
                 if (!data.password) {
                     form.setError("password", { message: "Password is required for new users" })
                     return
                 }
-                await createUser(data as CreateUserDTO)
-                toast({
-                    title: "Success",
-                    description: "User created successfully.",
-                })
+                await createUser({
+                    ...data,
+                    roles: data.roles as any
+                } as CreateUserDTO)
             }
+
+            toast({
+                title: "Success",
+                description: initialData ? "User updated successfully." : "User created successfully.",
+            })
+
             if (onSuccess) {
                 onSuccess()
             } else {
@@ -132,7 +137,6 @@ export function UserForm({ initialData, onSuccess }: UserFormProps) {
                 router.refresh()
             }
         } catch (error: any) {
-            // Handle validation errors from backend usually 422
             if (error.response && error.response.status === 422) {
                 const errors = error.response.data.errors
                 Object.keys(errors).forEach((key) => {
@@ -180,22 +184,50 @@ export function UserForm({ initialData, onSuccess }: UserFormProps) {
 
                 <FormField
                     control={form.control}
-                    name="role"
-                    render={({ field }) => (
+                    name="roles"
+                    render={() => (
                         <FormItem>
-                            <FormLabel>Role</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a role" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {roles.map((role) => (
-                                        <SelectItem key={role.id} value={role.name}>{role.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="mb-4">
+                                <FormLabel className="text-base">Roles</FormLabel>
+                                <FormDescription>
+                                    Select one or more roles for this user.
+                                </FormDescription>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 border rounded-md p-4 max-h-[300px] overflow-y-auto">
+                                {displayedRoles.map((role) => (
+                                    <FormField
+                                        key={role.id}
+                                        control={form.control}
+                                        name="roles"
+                                        render={({ field }) => {
+                                            return (
+                                                <FormItem
+                                                    key={role.id}
+                                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                                >
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(role.name)}
+                                                            onCheckedChange={(checked) => {
+                                                                return checked
+                                                                    ? field.onChange([...field.value, role.name])
+                                                                    : field.onChange(
+                                                                        field.value?.filter(
+                                                                            (value) => value !== role.name
+                                                                        )
+                                                                    )
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal cursor-pointer">
+                                                        {role.name}
+                                                    </FormLabel>
+                                                </FormItem>
+                                            )
+                                        }}
+                                    />
+                                ))}
+                            </div>
                             <FormMessage />
                         </FormItem>
                     )}

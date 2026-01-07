@@ -162,3 +162,40 @@ The system uses a "Dashboard Shell" layout:
 ### Performance
 -   **Code Splitting**: Next.js automatically splits code per page, ensuring fast initial loads.
 -   **Optimistic UI**: Simple state updates (like toggles) may reflect immediately while the background API request processes, providing a snappy feel.
+
+---
+
+## 6. Post-Admission Student Data Edit Policy
+**Governing Principle**: Once a learner is admitted, their academic identity must remain stable. Personal, contact, and support contexts may evolve, but core identifiers are locked.
+
+### 6.1 Editable vs Restricted Data
+
+#### 1. Fully Editable (Ongoing Changes)
+*Contextual details that naturally evolve.*
+-   **Guardians**: Phone, Email, Occupation, Relationship.
+-   **Support**: SEN status, Medical notes, Dietary requirements.
+-   **Placement**: Class, Stream, Clubs.
+> *Note*: Changes to Support settings are logged.
+
+#### 2. Conditionally Editable (Controlled)
+*Corrections only. Requires Admin role + Mandatory Reason.*
+-   **Identity**: Full Name (Spelling fix only), Gender, DOB.
+-   **Metadata**: Admission Date, Previous School.
+> *Audit*: Every change must have a logged reason.
+
+#### 3. Locked / Immutable
+*Never editable after admission.*
+-   **Identifiers**: Admission Number, Student System UUID.
+-   **Academic**: First Enrollment Cohort, Curriculum Framework (CBC).
+-   **History**: Submitted Assessment Records, Issued Report Cards.
+
+### 6.2 Role-Based Editing Rights
+| Data Type | Teacher | Admin | Note |
+| :--- | :---: | :---: | :--- |
+| **Guardian Contact** | ❌ | ✅ | Teachers view only (Privacy) |
+| **SEN / Medical** | 👁️ (View/Flag) | ✅ | Critical for student welfare |
+| **Class Placement** | ❌ | ✅ | Termly admin task |
+| **Identity (Name/DOB)** | ❌ | ✅ | Corrections only, with reason |
+| **Assessments** | ✅ (Add/Edit Drafts) | ❌ (No History Rewrite) | Historical grades are locked |
+| **Admission No** | ❌ | ❌ | Permanent Identifier |
+

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { ConversationList } from "./conversation-list"
 import { ChatWindow } from "./chat-window"
 import { getConversations, getMessages, sendMessage, markRead, type Conversation, type Message, type MessageUser } from "@/lib/api-communication"
@@ -8,13 +8,56 @@ import { Loader2, MessageSquarePlus } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { cn } from "@/lib/utils"
 
+import { useSearchParams } from "next/navigation"
+import { getUser } from "@/lib/api-users"
+
 export function ChatLayout() {
     const { user } = useAuth()
+    const searchParams = useSearchParams()
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [selectedUser, setSelectedUser] = useState<MessageUser | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isSending, setIsSending] = useState(false)
+    const lastReadMessageId = useRef<number | null>(null)
+
+    // Handle deep link to specific chat
+    useEffect(() => {
+        const checkParams = async () => {
+            const recipientId = searchParams?.get('recipientId')
+            if (recipientId && user) {
+                const userId = parseInt(recipientId)
+                if (isNaN(userId)) return
+
+                // Check if we already have this conversation loaded
+                // Note: conversations might be empty if still loading, 
+                // so we might want to wait or just fetch User to be safe/fast
+                const existing = conversations.find(c => c.user.id === userId)
+
+                if (existing) {
+                    setSelectedUser(existing.user)
+                } else {
+                    // Fetch user details if not in current list
+                    try {
+                        const userData = await getUser(userId)
+                        if (userData) {
+                            setSelectedUser({
+                                id: userData.id,
+                                name: userData.name,
+                                role: userData.roles?.[0]?.name || 'User',
+                                avatar: undefined // Profile image not in User interface explicitly unless I missed it, but StudentController constructs it. User interface has?
+                            })
+                        }
+                    } catch (error) {
+                        console.error("Failed to fetch recipient details", error)
+                    }
+                }
+            }
+        }
+
+        // Run check when params change or conversations load (to find existing)
+        checkParams()
+    }, [searchParams, user, conversations.length]) // Depend on length to re-check when conversations load
 
     // Fetch conversations
     const fetchConversations = useCallback(async () => {
@@ -47,39 +90,51 @@ export function ChatLayout() {
         if (!user) return
         try {
             // Determine ID to fetch: Preference Conversation ID, fallback User ID (backend handles split)
-            // Ideally we need the Conversation ID to be precise. 
-            // The list of conversations might NOT be loaded or up to date yet if we just searched a user.
-            // But we can check our list.
             const conversationId = conversations.find(c => c.user.id === userId)?.id
 
-            // If we have a conversation ID, use it. Otherwise pass User ID (backend 'show' tries to resolve)
-            const idToFetch = conversationId || userId
-
-            const data = await getMessages(idToFetch)
+            let data;
+            if (conversationId) {
+                data = await getMessages(conversationId, false)
+            } else {
+                // If no conversation exists yet, we are fetching by USER ID
+                data = await getMessages(userId, true)
+            }
             setMessages(data)
 
-            // Mark read
-            if (conversationId) {
-                await markRead(conversationId)
-            } else {
-                // If it was a user ID and backend resolved it, great. 
-                // Using the same ID for markRead might fail if backend expects Conv ID only.
-                // But my backend 'markRead' ALSO supports User ID fallback.
-                await markRead(userId)
+            // Intelligent Mark Read: Only mark if we have messages AND the last message is new to us
+            if (data.length > 0) {
+                const lastMsg = data[data.length - 1]
+                if (lastMsg.id !== lastReadMessageId.current) {
+                    if (conversationId) {
+                        await markRead(conversationId)
+                    } else {
+                        await markRead(userId)
+                    }
+                    lastReadMessageId.current = lastMsg.id
+                }
             }
         } catch (error) {
             console.error("Failed to fetch messages", error)
         }
     }, [conversations, user])
 
+    // Reset read tracker when switching users
+    useEffect(() => {
+        lastReadMessageId.current = null
+    }, [selectedUser])
+
     useEffect(() => {
         if (selectedUser && user) {
             fetchMessages(selectedUser.id)
             const interval = setInterval(() => fetchMessages(selectedUser.id), 3000)
-            fetchConversations()
+
+            // If we just started a chat (selectedUser set), and send a message, we want list to update.
+            // Also if we selected a user that WASNT in list, we want to refresh list eventually?
+            // Existing poll handles it.
+
             return () => clearInterval(interval)
         }
-    }, [selectedUser, fetchMessages, fetchConversations, user])
+    }, [selectedUser, fetchMessages, user])
 
     const handleSelectUser = (user: MessageUser) => {
         setSelectedUser(user)

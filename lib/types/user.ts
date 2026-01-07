@@ -40,6 +40,7 @@ export interface CreateUserDTO {
     password?: string;
     password_confirmation?: string;
     role?: UserRole;
+    roles?: string[];
 }
 
 export interface UpdateUserDTO {
@@ -48,6 +49,7 @@ export interface UpdateUserDTO {
     password?: string;
     password_confirmation?: string;
     role?: UserRole;
+    roles?: string[];
     is_active?: boolean;
 }
 

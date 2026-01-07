@@ -155,8 +155,8 @@ export default function ClassesList() {
 
                                             <div className="flex items-center gap-1.5 opacity-90">
                                                 <User className="h-3 w-3" />
-                                                <span className="truncate" title={cls.currentTeacher?.teacher?.full_name || "No Class Teacher"}>
-                                                    {cls.currentTeacher?.teacher?.full_name || "No Class Teacher"}
+                                                <span className="truncate" title={cls.currentTeacher?.teacher?.name || "No Class Teacher"}>
+                                                    {cls.currentTeacher?.teacher?.name || "No Class Teacher"}
                                                 </span>
                                             </div>
                                         </div>

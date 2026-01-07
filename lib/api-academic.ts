@@ -3,13 +3,20 @@ import { SchoolClass, Subject, Term, CreateClassDTO, CreateSubjectDTO, CreateTer
 
 // Classes
 export const getClasses = async () => {
-    const response = await api.get<SchoolClass[]>('/classes');
-    return response.data;
+    const response = await api.get<any[]>('/classes');
+    return response.data.map(cls => ({
+        ...cls,
+        currentTeacher: cls.current_teacher
+    })) as SchoolClass[];
 };
 
 export const getClass = async (id: number) => {
-    const response = await api.get<SchoolClass>(`/classes/${id}`);
-    return response.data;
+    const response = await api.get<any>(`/classes/${id}`);
+    const data = response.data;
+    return {
+        ...data,
+        currentTeacher: data.current_teacher
+    } as SchoolClass;
 };
 
 export const createClass = async (data: CreateClassDTO) => {

@@ -21,16 +21,16 @@ export default function StudentsList() {
 
     // Mock Data
     const students = [
-        { id: "STU001", name: "David Kimani", adm: "1402", risk: "High", attendance: 78, mean: "C-", forecast: "D+", trend: "down" },
-        { id: "STU002", name: "Sarah Omondi", adm: "1405", risk: "Medium", attendance: 92, mean: "B", forecast: "B+", trend: "up" },
-        { id: "STU003", name: "James Mwangi", adm: "1410", risk: "Medium", attendance: 85, mean: "C", forecast: "C", trend: "stable" },
-        { id: "STU004", name: "Esther Nyambura", adm: "1350", risk: "Low", attendance: 98, mean: "A-", forecast: "A", trend: "up" },
-        { id: "STU005", name: "Brian Ochieng", adm: "1422", risk: "High", attendance: 81, mean: "D+", forecast: "D", trend: "down" },
-        { id: "STU006", name: "Alice Wanjiku", adm: "1399", risk: "Low", attendance: 96, mean: "B+", forecast: "B+", trend: "stable" },
+        { id: "STU001", name: "David Kimani", adm: "1402", risk: "High", attendance: 78, mean: "AE", forecast: "Stable", trend: "down" },
+        { id: "STU002", name: "Sarah Omondi", adm: "1405", risk: "Medium", attendance: 92, mean: "ME", forecast: "Improving", trend: "up" },
+        { id: "STU003", name: "James Mwangi", adm: "1410", risk: "Medium", attendance: 85, mean: "AE", forecast: "Stable", trend: "stable" },
+        { id: "STU004", name: "Esther Nyambura", adm: "1350", risk: "Low", attendance: 98, mean: "EE", forecast: "Consistent", trend: "up" },
+        { id: "STU005", name: "Brian Ochieng", adm: "1422", risk: "High", attendance: 81, mean: "BE", forecast: "Declining", trend: "down" },
+        { id: "STU006", name: "Alice Wanjiku", adm: "1399", risk: "Low", attendance: 96, mean: "ME", forecast: "Improving", trend: "stable" },
     ]
 
     const filteredStudents = students.filter(student => {
-        const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) || student.adm.includes(searchTerm)
+        const matchesSearch = student.name.toLowerCase().replace(/\s+/g, "").includes(searchTerm.toLowerCase().replace(/\s+/g, "")) || student.adm.replace(/\s+/g, "").includes(searchTerm.replace(/\s+/g, ""))
         const matchesRisk = riskFilter === "all" || student.risk.toLowerCase() === riskFilter.toLowerCase()
         return matchesSearch && matchesRisk
     })
@@ -98,8 +98,8 @@ export default function StudentsList() {
                                 <TableHead>Adm No</TableHead>
                                 <TableHead>Risk Profile</TableHead>
                                 <TableHead>Attendance</TableHead>
-                                <TableHead>Performance</TableHead>
-                                <TableHead>Forecast</TableHead>
+                                <TableHead>Competency</TableHead>
+                                <TableHead>Growth</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -140,8 +140,19 @@ export default function StudentsList() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-bold">{student.mean}</span>
-                                            <span className="text-xs text-muted-foreground">Mean Grade</span>
+                                            <span className={`font-bold ${["EE", "ME", "AE", "BE"].includes(student.mean) ? "" : // Valid CBE
+                                                student.mean.startsWith("A") ? "text-green-600" : // Legacy fallback
+                                                    "text-primary"
+                                                }`}>
+                                                {student.mean.replace(/[A-E][+-]?/, (m) => {
+                                                    // Quick legacy to CBE mock mapper for any missed updates
+                                                    if (m.startsWith('A')) return 'EE';
+                                                    if (m.startsWith('B')) return 'ME';
+                                                    if (m.startsWith('C')) return 'AE';
+                                                    return 'BE';
+                                                })}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">Competency</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>

@@ -21,10 +21,30 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        if ($request->has('all')) {
-            return User::with('roles')->get();
+        $query = User::with(['roles', 'classTeacherAssignments']); // Eager load assignments for filtering consistently
+
+        if ($request->has('type') && $request->type === 'staff') {
+            $query->staff();
         }
-        return User::with('roles')->paginate($request->get('per_page', 20));
+
+        if ($request->has('role')) {
+            $query->role($request->role);
+        }
+
+        if ($request->has('search')) {
+            $search = str_replace(' ', '', $request->search);
+            $query->where(function($q) use ($search) {
+                // Remove spaces from DB column before comparing
+                $q->whereRaw("REPLACE(name, ' ', '') LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("REPLACE(email, ' ', '') LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        if ($request->has('all')) {
+            return $query->get();
+        }
+        
+        return $query->paginate($request->get('per_page', 20));
     }
 
     /**
@@ -38,7 +58,9 @@ class UserController extends Controller
             'password' => bcrypt($request->password),
         ]);
 
-        if ($request->has('role')) {
+        if ($request->has('roles')) {
+            $user->syncRoles($request->roles);
+        } elseif ($request->has('role')) {
             $user->assignRole($request->role);
         }
 
@@ -69,7 +91,9 @@ class UserController extends Controller
 
         $user->update($data);
 
-        if ($request->has('role')) {
+        if ($request->has('roles')) {
+            $user->syncRoles($request->roles);
+        } elseif ($request->has('role')) {
             $user->syncRoles([$request->role]);
         }
 
@@ -97,8 +121,8 @@ class UserController extends Controller
      */
     public function assignClassTeacher(Request $request, User $user)
     {
-        // Only Admin/Principal
-        if (!$request->user()->hasAnyRole(['Admin', 'Super Admin', 'Principal'])) {
+        // Only Admin/Principal/ICT Admin
+        if (!$request->user()->hasAnyRole(['Admin', 'Super Admin', 'Principal', 'ICT Admin'])) {
             abort(403, 'Unauthorized');
         }
 
@@ -107,7 +131,7 @@ class UserController extends Controller
             'academic_year' => 'required|string',
         ]);
 
-        if (!$user->hasRole('teacher')) { // Check specifically for lowercase 'teacher' as per roles types
+        if (!$user->hasRole('Teacher')) { // Matches DB Role 'Teacher'
             return response()->json(['message' => 'User must have Teacher role to be assigned a class'], 422);
         }
 
@@ -145,5 +169,29 @@ class UserController extends Controller
         );
 
         return response()->json(['message' => 'Class assigned successfully', 'assignment' => $assignment]);
+    }
+
+    /**
+     * Remove Class Teacher Responsibility
+     */
+    public function unassignClassTeacher(Request $request, User $user, $assignmentId)
+    {
+        // Only Admin/Principal
+        if (!$request->user()->hasAnyRole(['Admin', 'Super Admin', 'Principal'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        $assignment = \App\Models\ClassTeacherAssignment::where('id', $assignmentId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $assignment->delete();
+
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($user)
+            ->log("Removed class assignment ID {$assignmentId}");
+
+        return response()->json(['message' => 'Class assignment removed successfully']);
     }
 }

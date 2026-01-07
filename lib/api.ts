@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 const api = axios.create({
-    // Use relative path to leverage Next.js Rewrites (Proxy)
-    baseURL: '/api',
+    // Use the API proxy route which handles cookie-based auth
+    // Auth routes (/api/auth/*) and proxy routes (/api/proxy/*) are handled separately
+    baseURL: '/api/proxy',
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
@@ -10,15 +11,14 @@ const api = axios.create({
     },
 });
 
-// Request interceptor to add token if we are using token-based auth
-// (If using cookie-based Sanctum, this part is less strictly needed but good for "Bearer" flow)
+// Request interceptor - no longer needs to add token manually
+// The proxy route handles reading the HttpOnly cookie and adding the Bearer token
 api.interceptors.request.use((config) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
+    // Token is now handled by the server-side proxy via HttpOnly cookie
+    // No localStorage access needed - this prevents XSS token theft
     return config;
 });
+
 
 import { toast } from '@/components/ui/use-toast';
 
@@ -41,8 +41,9 @@ api.interceptors.response.use(
         // So showing toast is safer.
         if (typeof window !== 'undefined') {
             // Suppress console error for 403 (Forbidden) and 401 (Unauthorized) as they are handled by UI/Auth logic
-            if (status !== 403 && status !== 401) {
-                console.error('API Error URL:', error.config?.url);
+            // Using loose, lenient equality check to handle potential string/number mismatches
+            if (status != 403 && status != 401) {
+                console.error(`API Error URL: ${error.config?.url} | Status: ${status}`);
             }
 
             // Dispatch global event for auth errors

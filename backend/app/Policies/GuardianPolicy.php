@@ -13,7 +13,8 @@ class GuardianPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('manage_guardians') || $user->hasPermissionTo('view_users');
+        // STRICT: Only administrative roles can view the full directory
+        return $user->hasRole(['Admin', 'ICT Admin', 'Principal', 'Deputy Principal', 'Bursar', 'Admissions Officer']);
     }
 
     /**
@@ -21,15 +22,31 @@ class GuardianPolicy
      */
     public function view(User $user, Guardian $guardian): bool
     {
-        if ($user->hasPermissionTo('manage_guardians')) {
+        // 1. Admins have full access
+        if ($user->hasRole(['Admin', 'ICT Admin', 'Principal', 'Deputy Principal', 'Bursar', 'Admissions Officer'])) {
             return true;
         }
 
-        // Parent can view provided it's their own record? Or usually they view their kids.
-        // A Guardian user usually has a User account, but the 'Guardian' model is a separate entity linked to students.
-        // If the logged in user IS the guardian, we need to check linkage.
-        // For now, let's allow 'view_users' or 'manage_guardians'.
-         return $user->hasPermissionTo('manage_guardians') || $user->hasPermissionTo('view_users');
+        // 2. Class Teachers: Can view if the guardian belongs to a student in their ASSIGNED class
+        if ($user->hasRole('Teacher') && $user->isClassTeacher()) {
+             // Iterate through guardian's students to check class assignment
+            foreach ($guardian->students as $student) {
+                if ($user->isClassTeacherFor($student->class_id)) {
+                    return true;
+                }
+            }
+        }
+
+        // 3. Subject Teachers: Can view if they teach the student (Limited view will be handled in Controller/Resource)
+        if ($user->hasRole('Teacher')) {
+             foreach ($guardian->students as $student) {
+                if ($user->teachesClass($student->class_id)) { 
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

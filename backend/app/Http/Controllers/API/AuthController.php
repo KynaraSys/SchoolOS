@@ -78,6 +78,11 @@ class AuthController extends Controller
 
         $user->is_class_teacher = $user->isClassTeacher(); // Append Responsibility Flag
 
+        activity()
+            ->causedBy($user)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('User logged in');
+
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
@@ -93,6 +98,11 @@ class AuthController extends Controller
         // Revoke the token that was used to authenticate the current request
         $request->user()->currentAccessToken()->delete();
 
+        activity()
+            ->causedBy($request->user())
+            ->withProperties(['ip' => $request->ip()])
+            ->log('User logged out');
+
         return response()->json(['message' => 'Logged out successfully']);
     }
 
@@ -102,6 +112,7 @@ class AuthController extends Controller
     public function profile(Request $request)
     {
         $user = $request->user();
+        $user->is_class_teacher = $user->isClassTeacher();
         
         return response()->json([
             'user' => $user,

@@ -5,8 +5,62 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { useState, useEffect } from "react"
+import AddStaffDialog from "./add-staff-dialog"
+import { getUsers } from "@/lib/api-users"
+
+function StatsCard({ title, value, icon: Icon, description }: any) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardDescription className="flex items-center gap-2">
+          <Icon className="h-4 w-4" />
+          {title}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-semibold">{value}</div>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function StaffOverview() {
+  // const [isAddOpen, setIsAddOpen] = useState(false)
+  const [stats, setStats] = useState({
+    total: 0,
+    teachers: 0,
+    support: 0
+  })
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Ensure we fetch ALL staff by setting all=true
+        // Using updated scopeStaff logic on the backend (not Student/Parent)
+        // We rely on client-side counting for now to avoid multiple API calls or new endpoints
+        // Ideally /users/stats would be better.
+
+        const data = await getUsers(1, true, { type: 'staff' })
+        const staff = Array.isArray(data) ? data : data.data
+
+        const teachers = staff.filter((u: any) => u.roles.some((r: any) => r.name === 'Teacher')).length
+        const total = staff.length
+
+        setStats({
+          total,
+          teachers,
+          support: total - teachers
+        })
+      } catch (error) {
+        console.error("Failed to fetch staff stats", error)
+      }
+    }
+    fetchStats()
+  }, [])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -15,85 +69,54 @@ export default function StaffOverview() {
           <h1 className="text-3xl font-semibold">Staff & HR Management</h1>
           <p className="text-muted-foreground mt-1">Employee records, payroll, leave management</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Staff Member
-        </Button>
+        <Link href="/admin/staff/create">
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Staff Member
+          </Button>
+        </Link>
       </div>
+
+      {/* <AddStaffDialog open={isAddOpen} onOpenChange={setIsAddOpen} /> */}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Total Staff
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">68</div>
-            <p className="text-xs text-muted-foreground mt-1">Active employees</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <UserCog className="h-4 w-4" />
-              Teaching Staff
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">45</div>
-            <p className="text-xs text-muted-foreground mt-1">Teachers & HODs</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              Support Staff
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">23</div>
-            <p className="text-xs text-muted-foreground mt-1">Admin & operations</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              On Leave
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">3</div>
-            <p className="text-xs text-muted-foreground mt-1">Currently away</p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Total Staff"
+          value={stats.total}
+          icon={Users}
+          description="Active employees"
+        />
+        <StatsCard
+          title="Teaching Staff"
+          value={stats.teachers}
+          icon={UserCog}
+          description="Teachers & HODs"
+        />
+        <StatsCard
+          title="Support Staff"
+          value={stats.support}
+          icon={Briefcase}
+          description="Admin & operations"
+        />
+        <StatsCard
+          title="On Leave"
+          value={0} // TODO: Implement leave tracking
+          icon={Calendar}
+          description="Currently away"
+        />
       </div>
-
-      {/* Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input type="search" placeholder="Search staff by name or employee number..." className="pl-10" />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Quick links */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:bg-accent transition-colors cursor-pointer">
-          <CardHeader>
-            <CardTitle className="text-base">Staff Directory</CardTitle>
-            <CardDescription>View all staff members and their details</CardDescription>
-          </CardHeader>
-        </Card>
+        <Link href="/staff/directory">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="text-base">Staff Directory</CardTitle>
+              <CardDescription>View all staff members and their details</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
 
         <Card className="hover:bg-accent transition-colors cursor-pointer">
           <CardHeader>

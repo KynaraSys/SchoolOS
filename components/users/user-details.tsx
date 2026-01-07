@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { getUser } from "@/lib/api-users"
 import { User } from "@/lib/types/user"
 import { UserForm } from "@/components/users/user-form"
-import { ClassAssignment } from "@/components/users/class-assignment"
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { ModernTabs, ModernTabsContent, ModernTabsList, ModernTabsTrigger } from "@/components/ui/modern-tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -26,7 +26,12 @@ export default function UserDetails({ userId }: UserDetailsProps) {
 
     const fetchUser = async () => {
         try {
-            const data = await getUser(parseInt(userId))
+            const id = parseInt(userId)
+            if (isNaN(id)) {
+                setIsLoading(false)
+                return
+            }
+            const data = await getUser(id)
             setUser(data)
         } catch (error) {
             console.error("Failed to fetch user", error)
@@ -83,7 +88,6 @@ export default function UserDetails({ userId }: UserDetailsProps) {
             <ModernTabs defaultValue={defaultTab}>
                 <ModernTabsList>
                     <ModernTabsTrigger value="details" icon={UserIcon}>Profile & Settings</ModernTabsTrigger>
-                    {isTeacher && <ModernTabsTrigger value="classes" icon={GraduationCap}>Class Assignments</ModernTabsTrigger>}
                 </ModernTabsList>
 
                 <ModernTabsContent value="details" className="mt-6">
@@ -96,22 +100,6 @@ export default function UserDetails({ userId }: UserDetailsProps) {
                         </CardContent>
                     </Card>
                 </ModernTabsContent>
-
-                {isTeacher && (
-                    <ModernTabsContent value="classes" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Class Teacher Responsibilities</CardTitle>
-                                <CardDescription>
-                                    Assign this teacher to be a Class Teacher for a specific class.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ClassAssignment user={user} onSuccess={fetchUser} />
-                            </CardContent>
-                        </Card>
-                    </ModernTabsContent>
-                )}
             </ModernTabs>
         </div>
     )

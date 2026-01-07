@@ -147,8 +147,8 @@ export default function SystemSettings() {
                   </div>
                 ) : (
                   users.filter(u =>
-                    u.name.toLowerCase().includes(search.toLowerCase()) ||
-                    u.email.toLowerCase().includes(search.toLowerCase())
+                    u.name.toLowerCase().replace(/\s+/g, "").includes(search.toLowerCase().replace(/\s+/g, "")) ||
+                    u.email.toLowerCase().replace(/\s+/g, "").includes(search.toLowerCase().replace(/\s+/g, ""))
                   ).map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
                       <div className="flex-1">

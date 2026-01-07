@@ -414,10 +414,10 @@ export default function DisciplineOverview({ user }: DisciplineOverviewProps) {
                       .filter(incident => {
                         const query = searchQuery.toLowerCase();
                         return (
-                          incident.student?.first_name.toLowerCase().includes(query) ||
-                          incident.student?.last_name.toLowerCase().includes(query) ||
-                          incident.student?.admission_number.toLowerCase().includes(query) ||
-                          incident.title.toLowerCase().includes(query)
+                          incident.student?.first_name.toLowerCase().replace(/\s+/g, "").includes(query.replace(/\s+/g, "")) ||
+                          incident.student?.last_name.toLowerCase().replace(/\s+/g, "").includes(query.replace(/\s+/g, "")) ||
+                          incident.student?.admission_number.toLowerCase().replace(/\s+/g, "").includes(query.replace(/\s+/g, "")) ||
+                          incident.title.toLowerCase().replace(/\s+/g, "").includes(query.replace(/\s+/g, ""))
                         );
                       })
                       .map((incident, idx) => (

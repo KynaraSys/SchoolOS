@@ -45,12 +45,17 @@ const toastVariants = cva(
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-  VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
+  VariantProps<typeof toastVariants> & {
+    duration?: number
+  }
+>(({ className, variant, duration = 5000, ...props }, ref) => {
+  const animationDuration = `${duration}ms`
+
   return (
     <ToastPrimitives.Root
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
+      duration={duration}
       {...props}
     >
       {/* Content Container to keep children above progress bar */}
@@ -61,8 +66,9 @@ const Toast = React.forwardRef<
       {/* Progress Bar */}
       <div className="absolute bottom-0 left-0 h-1 w-full bg-black/10 dark:bg-white/20">
         <div
-          className="h-full bg-current opacity-75 animate-[toast-progress_5s_linear_forwards]"
+          className="h-full bg-current opacity-75"
           style={{
+            animation: `toast-progress ${animationDuration} linear forwards`,
             animationPlayState: 'running',
             transformOrigin: 'left'
           }}

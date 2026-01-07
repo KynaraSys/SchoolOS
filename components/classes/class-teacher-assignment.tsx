@@ -10,6 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { UserCheck, Calendar, History, Trash2, ArrowRightLeft, UserX, User } from "lucide-react"
 import { TeacherAssignmentModal } from "./teacher-assignment-modal"
 import { toast } from "@/components/ui/use-toast"
+import { getClass } from "@/lib/api-academic"
+
+import api from "@/lib/api"
 import { User as UserType } from "@/lib/types/roles"
 import { SchoolClass } from "@/lib/types/academic"
 import { format } from "date-fns"
@@ -33,35 +36,36 @@ export function ClassTeacherAssignment({ schoolClass }: ClassTeacherAssignmentPr
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [currentTeacher, setCurrentTeacher] = useState<ClassTeacherAssignmentProps['schoolClass']['currentTeacher'] | null>(schoolClass.currentTeacher || null)
 
-    // Handle Teacher Assignment
     const handleAssignTeacher = async (teacherId: string, year: string) => {
         try {
-            const token = localStorage.getItem('token') // Basic auth handling
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/users/${teacherId}/assign-class`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ class_id: schoolClass.id, academic_year: year })
-            })
+            const response = await api.post(`/users/${teacherId}/assign-class`, {
+                class_id: schoolClass.id,
+                academic_year: year
+            });
 
-            if (!response.ok) throw new Error('Failed to assign')
-
-            const data = await response.json()
+            const data = response.data;
 
             toast({
                 title: "Success",
                 description: "Class teacher assigned successfully.",
             })
 
-            // Refresh the page or update state to reflect changes
-            window.location.reload()
-        } catch (error) {
+            // Fetch updated class details to get the full teacher object
+            try {
+                const updatedClass = await getClass(schoolClass.id)
+                if (updatedClass.currentTeacher) {
+                    setCurrentTeacher(updatedClass.currentTeacher)
+                }
+            } catch (fetchError) {
+                console.error("Failed to fetch updated class details", fetchError)
+                // Fallback: Reload if fetch fails
+                window.location.reload()
+            }
+        } catch (error: any) {
+            console.error("Assignment error:", error)
             toast({
                 title: "Error",
-                description: "Failed to assign teacher.",
+                description: error.response?.data?.message || "Failed to assign teacher.",
                 variant: "destructive",
             })
         }
@@ -133,11 +137,11 @@ export function ClassTeacherAssignment({ schoolClass }: ClassTeacherAssignmentPr
                                 <Avatar className="h-16 w-16">
                                     <AvatarImage src={currentTeacher.teacher?.avatar_url} />
                                     <AvatarFallback className="text-lg">
-                                        {currentTeacher.teacher?.full_name?.substring(0, 2).toUpperCase() || "T"}
+                                        {currentTeacher.teacher?.name?.substring(0, 2).toUpperCase() || "T"}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <h3 className="text-lg font-medium">{currentTeacher.teacher?.full_name}</h3>
+                                    <h3 className="text-lg font-medium">{currentTeacher.teacher?.name}</h3>
                                     <p className="text-sm text-muted-foreground">{currentTeacher.teacher?.email}</p>
                                     <div className="flex items-center gap-2 mt-2">
                                         <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">

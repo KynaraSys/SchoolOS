@@ -1,15 +1,51 @@
 import api from '@/lib/api';
 import { User, CreateUserDTO, UpdateUserDTO, AssignClassDTO, Role } from '@/lib/types/user';
 
-export const getUsers = async (page = 1, all = false) => {
-    const query = all ? '?all=true' : `?page=${page}`;
-    const response = await api.get<any>(`/users${query}`);
-    return response.data; // Returns array if all=true, Paginator if not
+export const getUsers = async (
+    page = 1,
+    all = false,
+    filters: { type?: string; role?: string; search?: string } = {}
+) => {
+    const queryParams = new URLSearchParams();
+    if (all) {
+        queryParams.append('all', 'true');
+    } else {
+        queryParams.append('page', page.toString());
+    }
+
+    if (filters.type) queryParams.append('type', filters.type);
+    if (filters.role) queryParams.append('role', filters.role);
+    if (filters.search) queryParams.append('search', filters.search);
+
+    const response = await api.get<any>(`/users?${queryParams.toString()}`);
+
+    // Map snake_case to camelCase for array response
+    if (all && Array.isArray(response.data)) {
+        return response.data.map((u: any) => ({
+            ...u,
+            classTeacherAssignments: u.class_teacher_assignments
+        }));
+    }
+
+    return response.data; // Returns Paginator if not all=true
 };
 
 export const getUser = async (id: number) => {
-    const response = await api.get<User>(`/users/${id}`);
-    return response.data;
+    const response = await api.get<any>(`/users/${id}`);
+    const data = response.data;
+
+    // Map snake_case to camelCase for specific relationships
+    if (data.class_teacher_assignments) {
+        data.classTeacherAssignments = data.class_teacher_assignments.map((assignment: any) => ({
+            ...assignment,
+            schoolClass: assignment.school_class
+        }));
+
+        // Infer isClassTeacher from assignments
+        data.isClassTeacher = data.classTeacherAssignments.length > 0;
+    }
+
+    return data as User;
 };
 
 export const createUser = async (data: CreateUserDTO) => {
@@ -31,13 +67,19 @@ export const assignClassTeacher = async (userId: number, data: AssignClassDTO) =
     return response.data;
 };
 
+export const unassignClassTeacher = async (userId: number, assignmentId: number) => {
+    const response = await api.delete(`/users/${userId}/assign-class/${assignmentId}`);
+    return response.data;
+};
+
 export const getRoles = async () => {
     const response = await api.get<Role[]>('/roles');
     return response.data;
 };
 
-export const getStudents = async () => {
-    const response = await api.get<any[]>('/students');
+export const getStudents = async (params: any = {}) => {
+    const query = new URLSearchParams(params).toString();
+    const response = await api.get<any[]>(`/students?${query}`);
     return response.data;
 };
 

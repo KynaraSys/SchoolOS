@@ -9,16 +9,19 @@ import api from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field"
-import { Alert } from "@/components/ui/alert"
-import { GraduationCap } from "lucide-react"
+
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { useToast } from "@/components/ui/use-toast"
+import logoImage from "@/assets/logo.png"
+import Image from "next/image"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const { login } = useAuth()
   const { toast } = useToast()
@@ -27,26 +30,37 @@ export function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError(null)
 
     try {
       // 1. Get CSRF Cookie from Sanctum (if using SPA mode, good practice)
-      await api.get('/sanctum/csrf-cookie', { baseURL: '' });
+      // Note: This may not be needed for stateless API token auth
+      try {
+        await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
+      } catch {
+        // Ignore CSRF cookie failure - may not be configured
+      }
 
-      // 2. Login (Internal Route)
-      // Note: We use axios here but targeting the internal Next.js API route
-      // which is served at /api/auth/login (not the proxied backend /api/login)
-      // Since baseURL is '/api', we need to be careful.
-      // If we use `api` instance, it prepends `/api`.
-      // So `api.post('/auth/login')` -> `/api/auth/login`. This is correct.
-
-      const response = await api.post('/auth/login', {
-        email,
-        password
+      // 2. Login via Next.js API route (sets HttpOnly cookie)
+      // We use fetch directly instead of the api client since api client
+      // now points to /api/proxy for backend calls
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ email, password, remember: rememberMe }),
+        credentials: 'include',
       });
 
-      // 3. Store Token (for client-side access if needed) & User
-      login(response.data.access_token, response.data.user);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw { response: { status: response.status, data } };
+      }
+
+      // 3. Store user data (token is in HttpOnly cookie, not accessible here)
+      login(data.access_token, data.user);
 
       // 4. Redirect
       router.push("/dashboard"); // Assuming main dashboard path
@@ -57,20 +71,41 @@ export function LoginForm() {
 
       if (err.response) {
         if (err.response.status === 423) {
-          setError(err.response.data.message || "Account locked.");
+          toast({
+            variant: "destructive",
+            title: "Account Locked",
+            description: err.response.data.message || "Your account has been locked. Please contact your administrator.",
+            duration: 5000,
+          });
         } else if (err.response.status === 401) {
-          setError("Invalid email or password.");
+          toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: "Invalid email or password. Please check your credentials and try again.",
+            duration: 5000,
+          });
         } else if (err.response.status === 403) {
           toast({
             variant: "destructive",
             title: "Access Denied",
             description: err.response.data.message || "Your account has been deactivated.",
-          })
+            duration: 5000,
+          });
         } else {
-          setError(errorMessage);
+          toast({
+            variant: "destructive",
+            title: "Login Error",
+            description: errorMessage,
+            duration: 5000,
+          });
         }
       } else {
-        setError("Connection failed. Please check the backend URL.");
+        toast({
+          variant: "destructive",
+          title: "Connection Failed",
+          description: "Unable to connect to the server. Please check your connection and try again.",
+          duration: 5000,
+        });
       }
     } finally {
       setLoading(false);
@@ -82,8 +117,15 @@ export function LoginForm() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-              <GraduationCap className="h-7 w-7 text-primary-foreground" />
+            <div className="flex h-16 w-16 items-center justify-center">
+              <Image
+                src={logoImage}
+                alt="Kynara Systems Logo"
+                width={64}
+                height={64}
+                className="object-contain"
+                unoptimized
+              />
             </div>
           </div>
           <h1 className="text-3xl font-semibold">School OS</h1>
@@ -92,12 +134,6 @@ export function LoginForm() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
-          {error && (
-            <Alert variant="destructive" className="text-sm">
-              {error}
-            </Alert>
-          )}
-
           <Field>
             <FieldLabel>Email Address</FieldLabel>
             <Input
@@ -126,6 +162,17 @@ export function LoginForm() {
               </a>
             </FieldDescription>
           </Field>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+            />
+            <Label htmlFor="remember" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Remember me
+            </Label>
+          </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (

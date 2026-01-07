@@ -24,17 +24,14 @@ class DatabaseSeeder extends Seeder
         $admin = User::firstOrCreate(
             ['email' => 'admin@school-os.com'],
             [
-                'name' => 'Super Admin',
+                'name' => 'System Administrator',
                 'password' => Hash::make('password123'), // Change this in production
                 'email_verified_at' => now(),
-                'is_super_admin' => true, // SET THE FLAG
             ]
         );
 
-        // Assign 'Owner' or just leave without specific role if only flag matters. 
-        // For UI labels, let's assign 'Owner' if they are the school owner, or no role if they are purely platform vendor.
-        // Let's assume for this school instance, they are the Owner.
-        $admin->assignRole('Owner');
+        // Assign 'Admin' role as the primary role for the main user
+        $admin->assignRole('Admin');
 
         // 2b. Create School Admin (Standard Role-Based Admin)
         $schoolAdmin = User::firstOrCreate(

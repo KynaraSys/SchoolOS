@@ -7,7 +7,9 @@ use App\Models\Guardian;
 use App\Models\Activity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+
 use Illuminate\Validation\Rule;
+use App\Services\PasswordService;
 
 class GuardianController extends Controller
 {
@@ -32,7 +34,12 @@ class GuardianController extends Controller
         // Filter by student name
         if ($request->filled('student_name')) {
             $query->whereHas('students', function ($q) use ($request) {
-                $q->where('name', 'ilike', "%{$request->student_name}%");
+                $studentName = str_replace(' ', '', $request->student_name);
+                $q->where(function($sq) use ($studentName) {
+                    $sq->whereRaw("REPLACE(first_name, ' ', '') ILIKE ?", ["%{$studentName}%"])
+                       ->orWhereRaw("REPLACE(last_name, ' ', '') ILIKE ?", ["%{$studentName}%"])
+                       ->orWhereRaw("REPLACE(other_names, ' ', '') ILIKE ?", ["%{$studentName}%"]);
+                });
             });
         }
 
@@ -40,11 +47,9 @@ class GuardianController extends Controller
         if ($request->filled('class')) {
             $query->whereHas('students', function ($q) use ($request) {
                 // $q is User query. User hasOne Student. Student belongsTo SchoolClass.
-                $q->whereHas('student', function ($sq) use ($request) {
                     $sq->whereHas('schoolClass', function ($cq) use ($request) {
                          $cq->where('name', 'ilike', "%{$request->class}%");
                     });
-                });
             });
         }
         
@@ -113,7 +118,54 @@ class GuardianController extends Controller
     {
         $this->authorize('view', $guardian);
         
-        $guardian->load(['students.student.schoolClass', 'students.student.payments', 'user']);
+        $user = auth()->user();
+
+        // 1. Identify Role Context
+        $isAdmin = $user->hasRole(['Admin', 'Super Admin', 'ICT Admin', 'Principal', 'Deputy Principal', 'Bursar', 'Admissions Officer']);
+        $isClassTeacher = $user->hasRole('Teacher') && $user->isClassTeacher(); // Validated in Policy that they are linked to class
+        $isTeacher = $user->hasRole('Teacher');
+
+        // 2. Load Relations (Always load students for context, but filter deep data if needed)
+        $guardian->load(['students.schoolClass']);
+
+        // 3. Filter Data for Teachers
+        if (!$isAdmin) {
+            // Remove Administrative/Sensitive Fields
+            $guardian->makeHidden(['national_id', 'address', 'occupation', 'financial_summary', 'documents', 'notes', 'created_at', 'updated_at', 'email']);
+            
+            // Handle Phone Number
+            if ($isClassTeacher) {
+                // Check if actually class teacher for one of the kids (Policy checked this, but double check for masking context if multiple kids)
+                // For Class Teacher: Mask Phone Number (showing last 3 digits or similar is common, but request said 'optionally masked' -> Let's key on 'Masked')
+                // "Phone number (optionally masked)" -> Safety first: Mask it.
+                if ($guardian->phone_number) {
+                     $guardian->phone_number = '******' . substr($guardian->phone_number, -4);
+                }
+            } else {
+                // Subject Teacher: NO Contact Info
+                $guardian->makeHidden(['phone_number', 'phone']);
+            }
+
+            // Financials: STRICTLY FORBIDDEN
+            // Do not calculate or attach financial summary
+
+            // Audit Log for Direct API Access by Teacher
+            if ($isTeacher) { // Log only for teachers as admin access is high volume/trusted or logged elsewhere if needed
+                 \App\Models\Activity::create([
+                    'subject_type' => Guardian::class,
+                    'subject_id' => $guardian->id,
+                    'causer_id' => $user->id,
+                    'description' => 'Direct guardian view via API',
+                    'properties' => ['role' => $user->getRoleNames()]
+                ]);
+            }
+            
+            return response()->json($guardian);
+        }
+
+        // --- ADMIN ONLY SECTION ---
+
+        $guardian->load(['students.payments', 'user', 'documents', 'notes']);
 
         // Calculate Financial Summary
         $totalBalance = 0;
@@ -121,8 +173,7 @@ class GuardianController extends Controller
         $uncleared = 0;
         $lastPayment = null;
 
-        foreach ($guardian->students as $guardianStudent) {
-            $student = $guardianStudent->student;
+        foreach ($guardian->students as $student) {
             if ($student) {
                 // Mock Fee Structure: Standard Term Fee = 50,000
                 $standardFee = 50000; 
@@ -173,12 +224,11 @@ class GuardianController extends Controller
     {
         $this->authorize('view', $guardian);
         
-        $guardian->load(['students.student.payments']);
+        $guardian->load(['students.payments']);
 
         $payments = collect();
 
-        foreach ($guardian->students as $guardianStudent) {
-            $student = $guardianStudent->student;
+        foreach ($guardian->students as $student) {
             if ($student && $student->payments) {
                 foreach ($student->payments as $payment) {
                     $payments->push([
@@ -310,7 +360,27 @@ class GuardianController extends Controller
             return response()->json(['message' => 'Guardian not found'], 404);
         }
         
-        return response()->json($guardian);
+        return response()->json(['guardian' => $guardian]);
+    }
+
+    /**
+     * Search guardians by national ID number (for admission linking).
+     */
+    public function searchById(Request $request)
+    {
+        $this->authorize('viewAny', Guardian::class);
+        
+        $request->validate(['national_id' => 'required|string']);
+        
+        $nationalId = trim($request->national_id);
+        
+        $guardian = Guardian::where('national_id', $nationalId)->first();
+        
+        if (!$guardian) {
+            return response()->json(['message' => 'Guardian not found'], 404);
+        }
+        
+        return response()->json(['guardian' => $guardian]);
     }
 
     public function createPortalAccount(Guardian $guardian)
@@ -322,10 +392,13 @@ class GuardianController extends Controller
         }
 
         // Create User
+        $passwordAttributes = PasswordService::generateInitialPasswordAttributes(); // Get hash/force_change
+        
         $user = \App\Models\User::create([
             'name' => $guardian->first_name . ' ' . $guardian->last_name,
             'email' => $guardian->email ?? strtolower($guardian->first_name . '.' . $guardian->last_name . $guardian->id . '@parent.portal'),
-            'password' => \Illuminate\Support\Facades\Hash::make('password'), // Default password
+            'password' => $passwordAttributes['password'], 
+            'force_password_change' => $passwordAttributes['force_password_change'],
             'phone' => $guardian->phone_number,
             'is_active' => true,
         ]);
@@ -335,7 +408,10 @@ class GuardianController extends Controller
         $guardian->user_id = $user->id;
         $guardian->save();
 
-        return response()->json(['message' => 'Portal account created successfully.', 'user' => $user]);
+        // Send Notification
+        $user->notify(new \App\Notifications\TemporaryPasswordNotification($passwordAttributes['plain_password']));
+
+        return response()->json(['message' => 'Portal account created successfully. Credentials sent via email/SMS.', 'user' => $user]);
     }
 
     public function resetAccess(Guardian $guardian)
@@ -347,12 +423,13 @@ class GuardianController extends Controller
         }
 
         $user = $guardian->user;
-        $user->password = \Illuminate\Support\Facades\Hash::make('password'); // Reset to default
+        PasswordService::setTemporaryPassword($user); // Handles hashing, force change, and notification
+
         $user->failed_login_attempts = 0;
         $user->locked_until = null;
         $user->save();
 
-        return response()->json(['message' => 'Access reset successfully. Password is "password".']);
+        return response()->json(['message' => 'Access reset successfully. Temporary password sent via notification.']);
     }
 
     public function toggleAccess(Guardian $guardian)

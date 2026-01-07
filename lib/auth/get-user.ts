@@ -31,13 +31,13 @@ export async function getCurrentUser(): Promise<User | null> {
       // Normalize role
       const rolesList = userData.roles ? userData.roles.map((r: any) => r.name) : [];
       let primaryRole = (rolesList[0]?.toLowerCase().replace(/\s+/g, '_')) || "student";
-      if (primaryRole === 'admin') primaryRole = 'super_admin';
 
       return {
         id: String(userData.id),
         full_name: userData.name,
         email: userData.email,
         role: primaryRole,
+        name: userData.name,
         school_id: "default-school",
         isClassTeacher: !!userData.is_class_teacher,
       };

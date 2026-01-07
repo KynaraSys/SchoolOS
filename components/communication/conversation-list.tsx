@@ -25,8 +25,8 @@ export function ConversationList({ conversations, selectedUserId, onSelectUser }
     const [foundUsers, setFoundUsers] = useState<MessageUser[]>([])
 
     const filtered = conversations.filter(c =>
-        c.user.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.user.role.toLowerCase().includes(search.toLowerCase())
+        c.user.name.toLowerCase().replace(/\s+/g, "").includes(search.toLowerCase().replace(/\s+/g, "")) ||
+        c.user.role.toLowerCase().replace(/\s+/g, "").includes(search.toLowerCase().replace(/\s+/g, ""))
     )
 
     useEffect(() => {

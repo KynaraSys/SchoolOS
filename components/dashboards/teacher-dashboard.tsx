@@ -46,6 +46,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { assessmentApi } from "@/lib/api-assessment"
+import { useRouter } from "next/navigation"
 
 // --- MOCK DATA ---
 
@@ -79,6 +81,46 @@ const INSIGHTS = [
 ]
 
 export default function TeacherDashboard({ user }: { user?: User }) {
+  const router = useRouter()
+  const [assessmentStats, setAssessmentStats] = useState({
+    pendingObservations: 0,
+    completedToday: 0,
+    atRiskLearners: 0
+  })
+  const [assessmentClasses, setAssessmentClasses] = useState<any[]>([])
+
+  // Load Assessment Data
+  useState(() => {
+    const loadAssessmentData = async () => {
+      // Mock data for now, similar to AssessmentPage
+      setAssessmentStats({
+        pendingObservations: 12,
+        completedToday: 5,
+        atRiskLearners: 3
+      })
+
+      setAssessmentClasses([
+        {
+          id: 1,
+          name: "Grade 1 Blue",
+          subject: "Mathematics",
+          schedule: "08:00 AM",
+          studentsCount: 24,
+          pendingCount: 5
+        },
+        {
+          id: 2,
+          name: "Grade 2 Red",
+          subject: "English Activities",
+          schedule: "10:00 AM",
+          studentsCount: 22,
+          pendingCount: 0
+        }
+      ])
+    }
+    loadAssessmentData()
+  })
+
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return "Good morning"
@@ -109,9 +151,61 @@ export default function TeacherDashboard({ user }: { user?: User }) {
           <Button variant="outline" className="gap-2 hidden sm:flex">
             <Mail className="h-4 w-4" /> Messages
           </Button>
-          <Button className="gap-2 shadow-lg shadow-primary/20">
+          <Button onClick={() => router.push('/teacher/assessments')} className="gap-2 shadow-lg shadow-primary/20">
             <Plus className="h-4 w-4" /> New Assessment
           </Button>
+        </div>
+      </div>
+
+      {/* NEW: ASSESSMENT OVERVIEW SECTION */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold tracking-tight">CBC Assessment Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Assessment Stats Cards */}
+          <Card className="bg-amber-500/10 border-amber-500/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-amber-600 dark:text-amber-400">Pending Observations</CardTitle>
+              <Clock className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-700 dark:text-amber-300">{assessmentStats.pendingObservations}</div>
+              <p className="text-xs text-amber-600/60 dark:text-amber-400/60">Needed today</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-emerald-500/10 border-emerald-500/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Completed Today</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{assessmentStats.completedToday}</div>
+              <p className="text-xs text-emerald-600/60 dark:text-emerald-400/60">Assessments recorded</p>
+            </CardContent>
+          </Card>
+          <div className="bg-card border rounded-xl overflow-hidden">
+            <div className="p-4 border-b bg-muted/40">
+              <h3 className="font-semibold text-sm">Quick Access: Classes</h3>
+            </div>
+            <div className="divide-y">
+              {assessmentClasses.map(cls => (
+                <div
+                  key={cls.id}
+                  onClick={() => router.push(`/teacher/assessments?classId=${cls.id}`)}
+                  className="p-3 flex items-center justify-between hover:bg-muted/50 cursor-pointer transition-colors"
+                >
+                  <div>
+                    <p className="font-medium text-sm">{cls.name}</p>
+                    <p className="text-xs text-muted-foreground">{cls.subject}</p>
+                  </div>
+                  {cls.pendingCount > 0 && (
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-200">
+                      {cls.pendingCount} Pending
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

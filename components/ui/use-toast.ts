@@ -161,6 +161,14 @@ function toast({ ...props }: Toast) {
     },
   })
 
+  // Auto-dismiss after duration (use provided duration or default)
+  const duration = typeof props.duration === 'number' ? props.duration : TOAST_REMOVE_DELAY
+  if (duration > 0) {
+    setTimeout(() => {
+      dismiss()
+    }, duration)
+  }
+
   return {
     id: id,
     dismiss,

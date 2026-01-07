@@ -10,28 +10,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
+import { getLearnerProfile, LearnerProfile } from "@/lib/api-learner-profile"
+import { useEffect } from "react"
+
 interface StudentProfileViewProps {
   studentId: string
 }
 
 export default function StudentProfileView({ studentId }: StudentProfileViewProps) {
   const [activeTab, setActiveTab] = useState("overview")
+  const [profile, setProfile] = useState<LearnerProfile | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Mock student data
-  const student = {
-    id: studentId,
-    admNo: "2022/0342",
-    name: "Sarah Wanjiru Kamau",
-    class: "Form 3A",
-    gender: "Female",
-    dob: "2008-03-15",
-    age: 16,
-    guardianName: "James Kamau",
-    guardianPhone: "+254 712 345 678",
-    attendance: 97.8,
-    performance: 78.7,
-    feeBalance: 18500,
-    status: "active",
+  useEffect(() => {
+    getLearnerProfile(studentId)
+      .then((data) => {
+        setProfile(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [studentId])
+
+  if (loading || !profile) {
+    return <div className="p-8 text-center">Loading profile...</div>
+  }
+
+  const { student, academic_progress } = profile;
+
+  // Adapt student object if needed or use directly
+  const studentData = {
+    name: student.name,
+    admNo: student.admission_number,
+    class: student.school_class?.name || "N/A",
+    gender: student.gender,
+    dob: student.dob,
+    age: 16, // calculate from DOB
+    guardianName: student.guardians?.[0]?.first_name || "N/A",
+    guardianPhone: student.guardians?.[0]?.phone || "N/A",
+    attendance: 97.8, // from attendance_summary
+    status: student.enrollment_status ?? "Active"
   }
 
   return (
@@ -44,9 +64,9 @@ export default function StudentProfileView({ studentId }: StudentProfileViewProp
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-3xl font-semibold">{student.name}</h1>
+          <h1 className="text-3xl font-semibold">{studentData.name}</h1>
           <p className="text-muted-foreground mt-1">
-            {student.admNo} · {student.class}
+            {studentData.admNo} · {studentData.class}
           </p>
         </div>
         <div className="flex gap-2">
@@ -76,12 +96,12 @@ export default function StudentProfileView({ studentId }: StudentProfileViewProp
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
-              Overall Grade
+              Competency Status
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">B+</div>
-            <p className="text-xs text-muted-foreground mt-1">Mean: {student.performance}%</p>
+            <div className="text-2xl font-semibold text-primary">Meeting Expectation</div>
+            <p className="text-xs text-muted-foreground mt-1">Based on recent assessments</p>
           </CardContent>
         </Card>
 
@@ -93,7 +113,7 @@ export default function StudentProfileView({ studentId }: StudentProfileViewProp
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">{student.attendance}%</div>
+            <div className="text-2xl font-semibold">{studentData.attendance}%</div>
             <p className="text-xs text-muted-foreground mt-1">2 days absent this term</p>
           </CardContent>
         </Card>
@@ -106,7 +126,7 @@ export default function StudentProfileView({ studentId }: StudentProfileViewProp
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold text-warning">KSh {student.feeBalance.toLocaleString()}</div>
+            <div className="text-2xl font-semibold text-warning">KSh 18,500</div>
             <p className="text-xs text-muted-foreground mt-1">Payment plan available</p>
           </CardContent>
         </Card>
@@ -145,27 +165,27 @@ export default function StudentProfileView({ studentId }: StudentProfileViewProp
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Full Name</span>
-                  <span className="text-sm font-medium">{student.name}</span>
+                  <span className="text-sm font-medium">{studentData.name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Admission Number</span>
-                  <span className="text-sm font-medium">{student.admNo}</span>
+                  <span className="text-sm font-medium">{studentData.admNo}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Gender</span>
-                  <span className="text-sm font-medium">{student.gender}</span>
+                  <span className="text-sm font-medium">{studentData.gender}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Date of Birth</span>
-                  <span className="text-sm font-medium">{student.dob}</span>
+                  <span className="text-sm font-medium">{studentData.dob}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Age</span>
-                  <span className="text-sm font-medium">{student.age} years</span>
+                  <span className="text-sm font-medium">{studentData.age} years</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Class</span>
-                  <span className="text-sm font-medium">{student.class}</span>
+                  <span className="text-sm font-medium">{studentData.class}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
@@ -181,11 +201,11 @@ export default function StudentProfileView({ studentId }: StudentProfileViewProp
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Guardian Name</span>
-                  <span className="text-sm font-medium">{student.guardianName}</span>
+                  <span className="text-sm font-medium">{studentData.guardianName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Phone Number</span>
-                  <span className="text-sm font-medium">{student.guardianPhone}</span>
+                  <span className="text-sm font-medium">{studentData.guardianPhone}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Email</span>
@@ -240,32 +260,30 @@ export default function StudentProfileView({ studentId }: StudentProfileViewProp
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  { subject: "Mathematics", score: 78, grade: "B", teacher: "Mr. Ochieng" },
-                  { subject: "English", score: 82, grade: "A-", teacher: "Mrs. Njeri" },
-                  { subject: "Kiswahili", score: 75, grade: "B", teacher: "Mr. Mwangi" },
-                  { subject: "Biology", score: 85, grade: "A", teacher: "Mr. Kamau" },
-                  { subject: "Chemistry", score: 72, grade: "B-", teacher: "Dr. Mwangi" },
-                  { subject: "Physics", score: 80, grade: "A-", teacher: "Mr. Omondi" },
-                  { subject: "History", score: 76, grade: "B", teacher: "Mrs. Wanjiru" },
-                  { subject: "Geography", score: 79, grade: "B+", teacher: "Mr. Otieno" },
-                ].map((subject, idx) => (
-                  <div key={idx} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">{subject.subject}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold">{subject.score}%</span>
-                            <Badge variant="outline">{subject.grade}</Badge>
+                {academic_progress?.length > 0 ? (
+                  academic_progress.map((subject, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium">{subject.subject}</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={
+                                subject.indicator?.startsWith('EE') ? 'bg-green-100 text-green-700' :
+                                  subject.indicator?.startsWith('ME') ? 'bg-blue-100 text-blue-700' :
+                                    subject.indicator?.startsWith('AE') ? 'bg-amber-100 text-amber-700' :
+                                      'bg-red-100 text-red-700'
+                              }>{subject.indicator || 'N/A'}</Badge>
+                            </div>
                           </div>
+                          <p className="text-xs text-muted-foreground">{subject.teacher}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">{subject.teacher}</p>
                       </div>
                     </div>
-                    <Progress value={subject.score} />
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">No academic records found for this term.</div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -15,7 +15,7 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin', 'Super Admin', 'ICT Admin']);
+        return $user->hasRole(['Admin', 'ICT Admin']);
     }
 
     /**
@@ -23,7 +23,13 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
-        return $user->hasRole(['Admin', 'Super Admin', 'ICT Admin']) || $user->id === $model->id;
+        if ($user->hasRole(['Admin', 'ICT Admin']) || $user->id === $model->id) {
+            return true;
+        }
+
+        // Allow viewing if the user is allowed to message the target
+        // This enables retrieving name/avatar for chat interfaces
+        return $user->canMessage($model);
     }
 
     /**
@@ -31,7 +37,7 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole(['Admin', 'Super Admin', 'ICT Admin']);
+        return $user->hasRole(['Admin', 'ICT Admin']);
     }
 
     /**
@@ -39,7 +45,7 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
-        return $user->hasRole(['Admin', 'Super Admin', 'ICT Admin']);
+        return $user->hasRole(['Admin', 'ICT Admin']);
     }
 
     /**
@@ -47,7 +53,7 @@ class UserPolicy
      */
     public function delete(User $user, User $model): bool
     {
-        return $user->hasRole(['Admin', 'Super Admin', 'ICT Admin']);
+        return $user->hasRole(['Admin', 'ICT Admin']);
     }
 
     /**
@@ -55,7 +61,7 @@ class UserPolicy
      */
     public function restore(User $user, User $model): bool
     {
-        return $user->hasRole(['Admin', 'Super Admin', 'ICT Admin']);
+        return $user->hasRole(['Admin', 'ICT Admin']);
     }
 
     /**

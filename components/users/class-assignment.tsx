@@ -19,9 +19,9 @@ import { Input } from "@/components/ui/input"
 import { User, AssignClassDTO } from "@/lib/types/user"
 import { SchoolClass } from "@/lib/types/academic"
 import { getClasses } from "@/lib/api-academic"
-import { assignClassTeacher } from "@/lib/api-users"
+import { assignClassTeacher, unassignClassTeacher } from "@/lib/api-users"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Unlink } from "lucide-react"
 
 const assignClassSchema = z.object({
     class_id: z.string().min(1, { message: "Please select a class" }),
@@ -82,6 +82,25 @@ export function ClassAssignment({ user, onSuccess }: ClassAssignmentProps) {
         }
     }
 
+    async function handleUnassign(assignmentId: number) {
+        if (!confirm("Are you sure you want to remove this class assignment?")) return
+
+        try {
+            await unassignClassTeacher(user.id, assignmentId)
+            toast({
+                title: "Success",
+                description: "Class assignment removed.",
+            })
+            if (onSuccess) onSuccess()
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to remove assignment.",
+                variant: "destructive",
+            })
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="border rounded-md p-4 bg-muted/50">
@@ -89,9 +108,20 @@ export function ClassAssignment({ user, onSuccess }: ClassAssignmentProps) {
                 {user.classTeacherAssignments && user.classTeacherAssignments.length > 0 ? (
                     <ul className="list-disc list-inside text-sm text-foreground">
                         {user.classTeacherAssignments.map((assignment) => (
-                            <li key={assignment.id}>
-                                {assignment.schoolClass?.name} ({assignment.academic_year})
-                                {assignment.is_primary && <span className="text-xs text-muted-foreground ml-2">(Primary)</span>}
+                            <li key={assignment.id} className="flex items-center justify-between">
+                                <span>
+                                    {assignment.schoolClass?.name} {assignment.schoolClass?.stream} ({assignment.academic_year})
+                                    {assignment.is_primary && <span className="text-xs text-muted-foreground ml-2">(Primary)</span>}
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2"
+                                    onClick={() => handleUnassign(assignment.id)}
+                                >
+                                    <Unlink className="h-4 w-4" />
+                                    Unassign
+                                </Button>
                             </li>
                         ))}
                     </ul>

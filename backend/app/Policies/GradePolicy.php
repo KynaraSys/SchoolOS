@@ -21,12 +21,24 @@ class GradePolicy
      */
     public function view(User $user, Grade $grade): bool
     {
-        // Teachers/Admins can view all, Students can only view their own
-        if ($user->hasRole(['Teacher', 'Admin'])) {
+        if ($user->hasRole(['Admin', 'ICT Admin', 'Principal'])) {
             return true;
         }
 
-        return $user->id === $grade->user_id;
+        // Teachers: Can only view grades if they teach that Subject to that Class
+        // OR if they are the Class Teacher (Overseer of the report card)
+        if ($user->hasRole('Teacher')) {
+            // Check by Grade context (Class/Subject)
+            if ($user->isClassTeacherFor($grade->class_id)) {
+                return true;
+            }
+
+            return $user->teachesSubjectInClass($grade->subject_id, $grade->class_id);
+        }
+
+        // Students/Parents: Own grades only
+        return $user->id === $grade->student->user_id || 
+               ($user->hasRole('Parent') && $user->guardians()->whereHas('students', fn($q) => $q->where('id', $grade->student_id))->exists());
     }
 
     /**
@@ -34,7 +46,9 @@ class GradePolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('edit_grades');
+        // Creation logic usually tied to Controller validation of subject/class, 
+        // but generally Teachers can create.
+        return $user->hasRole(['Admin', 'Teacher']);
     }
 
     /**
@@ -42,7 +56,16 @@ class GradePolicy
      */
     public function update(User $user, Grade $grade): bool
     {
-        return $user->hasPermissionTo('edit_grades');
+        if ($user->hasRole(['Admin', 'ICT Admin'])) {
+            return true;
+        }
+
+        if ($user->hasRole('Teacher')) {
+            // Strict: Only Subject Teacher can edit.
+            return $user->teachesSubjectInClass($grade->subject_id, $grade->class_id);
+        }
+
+        return false;
     }
 
     /**
@@ -50,6 +73,6 @@ class GradePolicy
      */
     public function delete(User $user, Grade $grade): bool
     {
-        return $user->hasPermissionTo('edit_grades');
+        return $this->update($user, $grade);
     }
 }

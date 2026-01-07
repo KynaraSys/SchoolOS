@@ -2,6 +2,7 @@ import type { UserRole } from "@/lib/types/roles"
 import {
   LayoutDashboard,
   Users,
+  UserPlus,
   GraduationCap,
   DollarSign,
   Calendar,
@@ -38,7 +39,7 @@ export const navigationItems: NavigationItem[] = [
     name: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
-    roles: ["super_admin", "owner", "principal", "academic_director", "bursar", "teacher", "parent", "student", "ict_admin"],
+    roles: ["admin", "owner", "principal", "academic_director", "bursar", "teacher", "parent", "student", "ict_admin"],
   },
   {
     name: "My Subjects",
@@ -57,13 +58,21 @@ export const navigationItems: NavigationItem[] = [
     name: "Students",
     icon: Users,
     href: "/students",
-    roles: ["super_admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
+    roles: ["admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
+    children: [
+      {
+        name: "New Admission",
+        icon: UserPlus,
+        href: "/admissions/new",
+        roles: ["admin", "owner", "principal", "academic_director", "ict_admin"],
+      },
+    ]
   },
   {
     name: "Parents/Guardians",
     icon: Baby, // Using Baby to represent child/parent relationship
     href: "/guardians",
-    roles: ["super_admin", "owner", "principal", "academic_director", "ict_admin", "teacher"],
+    roles: ["admin", "owner", "principal", "academic_director", "ict_admin"],
   },
   {
     name: "My Children",
@@ -81,7 +90,7 @@ export const navigationItems: NavigationItem[] = [
     name: "Attendance",
     icon: Calendar,
     href: "/attendance",
-    roles: ["super_admin", "owner", "principal", "academic_director", "teacher", "ict_admin", "parent"],
+    roles: ["admin", "owner", "principal", "academic_director", "teacher", "ict_admin", "parent"],
   },
   {
     name: "Lesson Plans",
@@ -105,76 +114,100 @@ export const navigationItems: NavigationItem[] = [
     name: "Academic",
     icon: GraduationCap,
     href: "/academic",
-    roles: ["super_admin", "owner", "principal", "academic_director", "ict_admin", "parent", "teacher"],
-    children: [
-      {
-        name: "Classes & Streams",
-        icon: Building2,
-        href: "/classes",
-        roles: ["super_admin", "owner", "principal", "academic_director", "ict_admin", "teacher"],
-      },
-      {
-        name: "Subjects",
-        icon: BookOpen,
-        href: "/subjects",
-        roles: ["super_admin", "owner", "principal", "academic_director", "ict_admin", "teacher"],
-      },
-      {
-        name: "Exams",
-        icon: FileBarChart, // Changed to distinct icon if available or generic
-        href: "/exams",
-        roles: ["super_admin", "owner", "principal", "academic_director", "ict_admin", "parent", "teacher"],
-      },
-      {
-        name: "Results",
-        icon: BarChart3,
-        href: "/exams",
-        roles: ["super_admin", "owner", "principal", "academic_director", "ict_admin", "parent", "teacher"],
-      }
-    ]
+    roles: ["admin", "owner", "principal", "academic_director", "ict_admin", "parent", "teacher"],
+  },
+  {
+    name: "CBC Assessments",
+    icon: FileBarChart,
+    href: "/teacher/assessments",
+    roles: ["teacher"],
   },
   {
     name: "Discipline",
     icon: ShieldAlert,
     href: "/discipline",
-    roles: ["super_admin", "owner", "principal", "academic_director", "ict_admin", "teacher"],
+    roles: ["admin", "owner", "principal", "academic_director", "ict_admin", "teacher"],
 
   },
   {
     name: "Finance",
     icon: DollarSign,
     href: "/finance",
-    roles: ["super_admin", "owner", "principal", "bursar", "ict_admin", "parent"],
+    roles: ["admin", "owner", "principal", "bursar", "ict_admin", "parent"],
   },
   {
     name: "Workflows",
     icon: Workflow,
     href: "/workflows",
-    roles: ["super_admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
+    roles: ["admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
   },
   {
     name: "Communication",
     icon: MessageSquare,
     href: "/communication",
-    roles: ["super_admin", "owner", "principal", "academic_director", "bursar", "teacher", "ict_admin", "parent"],
+    roles: ["admin", "owner", "principal", "academic_director", "bursar", "teacher", "ict_admin", "parent"],
   },
   {
     name: "Staff & HR",
     icon: UserCog,
     href: "/staff",
-    roles: ["super_admin", "owner", "principal", "ict_admin"],
+    roles: ["admin", "owner", "principal", "ict_admin"],
+    children: [
+      {
+        name: "Onboard Staff",
+        icon: UserPlus,
+        href: "/admin/staff/create",
+        roles: ["admin", "owner", "principal", "ict_admin"],
+      },
+      {
+        name: "Staff Directory",
+        icon: Users,
+        href: "/staff/directory",
+        roles: ["admin", "owner", "principal", "ict_admin"],
+      },
+      {
+        name: "Payroll",
+        icon: DollarSign,
+        href: "/staff/payroll",
+        roles: ["admin", "owner", "principal", "bursar", "ict_admin"],
+      },
+      {
+        name: "Leave Requests",
+        icon: Calendar,
+        href: "/staff/leave",
+        roles: ["admin", "owner", "principal", "ict_admin"],
+      },
+      {
+        name: "Appraisals",
+        icon: BarChart3,
+        href: "/staff/appraisals",
+        roles: ["admin", "owner", "principal", "ict_admin"],
+      },
+      {
+        name: "Workload",
+        icon: Clock,
+        href: "/staff/workload",
+        roles: ["admin", "owner", "principal", "academic_director", "ict_admin"],
+      },
+      {
+        name: "Recruitment",
+        icon: Briefcase,
+        href: "/staff/recruitment",
+        roles: ["admin", "owner", "principal", "ict_admin"],
+      },
+    ],
   },
   {
     name: "Operations",
     icon: Briefcase,
     href: "/operations",
-    roles: ["super_admin", "owner", "principal", "ict_admin"],
+    roles: ["admin", "owner", "principal", "ict_admin"],
   },
   {
     name: "AI Insights",
     icon: TrendingUp,
     href: "/insights",
-    roles: ["super_admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
+    roles: ["admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
   },
   {
     name: "Transport",
@@ -190,19 +223,25 @@ export const secondaryNavigationItems: NavigationItem[] = [
     name: "Reports",
     icon: BarChart3,
     href: "/reports",
-    roles: ["super_admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
+    roles: ["admin", "owner", "principal", "academic_director", "bursar", "ict_admin"],
   },
   {
     name: "School Settings",
     icon: Building2,
     href: "/settings/school",
-    roles: ["super_admin", "owner", "principal", "ict_admin"],
+    roles: ["admin", "owner", "principal", "ict_admin"],
   },
   {
     name: "System Settings",
     icon: Settings,
     href: "/settings/system",
-    roles: ["super_admin", "owner", "ict_admin"],
+    roles: ["admin", "owner", "ict_admin"],
+  },
+  {
+    name: "Data Governance",
+    icon: ShieldAlert,
+    href: "/settings/data-governance/retention",
+    roles: ["admin", "principal", "ict_admin"],
   },
 ]
 

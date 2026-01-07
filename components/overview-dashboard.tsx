@@ -20,7 +20,7 @@ export default function OverviewDashboard({ user }: { user?: User }) {
   switch (user.role) {
     case "owner":
       return <OwnerDashboard user={user} />
-    case "super_admin":
+    case "admin":
       return <SuperAdminDashboard user={user} />
     case "academic_director":
       return <AcademicDirectorDashboard user={user} />

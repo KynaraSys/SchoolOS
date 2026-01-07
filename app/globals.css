@@ -5,8 +5,10 @@
 
 :root {
   /* School OS - Light Mode (Kynara Neutral Light Base) */
-  --background: #F4F6F8; /* Kynara Slate */
-  --foreground: #1F2933; /* Kynara Graphite */
+  --background: #F4F6F8;
+  /* Kynara Slate */
+  --foreground: #1F2933;
+  /* Kynara Graphite */
 
   --card: #FFFFFF;
   --card-foreground: #1F2933;
@@ -27,30 +29,40 @@
   --accent: #F1F5F9;
   --accent-foreground: #1F2933;
 
-  --destructive: #B42318; /* Deep Red */
+  --destructive: #B42318;
+  /* Deep Red */
   --destructive-foreground: #FFFFFF;
 
-  --warning: #ED8B00; /* Amber */
+  --warning: #ED8B00;
+  /* Amber */
   --warning-foreground: #FFFFFF;
 
-  --success: #2E7D32; /* Muted Green */
+  --success: #2E7D32;
+  /* Muted Green */
   --success-foreground: #FFFFFF;
 
-  --info: #4A6FA5; /* Soft Blue */
+  --info: #4A6FA5;
+  /* Soft Blue */
   --info-foreground: #FFFFFF;
 
   --border: #E2E8F0;
   --input: #E2E8F0;
-  --ring: #2FA4A9; /* Focus rings - Teal */
+  --ring: #2FA4A9;
+  /* Focus rings - Teal */
 
   --radius: 0.5rem;
 
   /* Chart Palette */
-  --chart-1: #2FA4A9; /* Teal */
-  --chart-2: #4A6FA5; /* Steel Blue */
-  --chart-3: #9AA5B1; /* Slate Gray */
-  --chart-4: #2E7D32; /* Muted Green */
-  --chart-5: #ED8B00; /* Amber */
+  --chart-1: #2FA4A9;
+  /* Teal */
+  --chart-2: #4A6FA5;
+  /* Steel Blue */
+  --chart-3: #9AA5B1;
+  /* Slate Gray */
+  --chart-4: #2E7D32;
+  /* Muted Green */
+  --chart-5: #ED8B00;
+  /* Amber */
 
   /* Sidebar - Always Dark (Kynara Indigo) */
   --sidebar: #0F1E3D;
@@ -65,16 +77,20 @@
 
 .dark {
   /* School OS - Dark Mode (Kynara Indigo Base) */
-  --background: #0F1E3D; /* Kynara Indigo (Primary Base) */
-  --foreground: #F4F6F8; /* Neutral Light */
+  --background: #0F1E3D;
+  /* Kynara Indigo (Primary Base) */
+  --foreground: #F4F6F8;
+  /* Neutral Light */
 
-  --card: #1F2933; /* Kynara Graphite (Surface) */
+  --card: rgba(31, 41, 51, 0.2);
+  /* Kynara Graphite (Surface) - Translucent */
   --card-foreground: #F4F6F8;
 
-  --popover: #1F2933;
+  --popover: rgba(31, 41, 51, 0.2);
   --popover-foreground: #F4F6F8;
 
-  --primary: #2FA4A9; /* Accent unchanged */
+  --primary: #2FA4A9;
+  /* Accent unchanged */
   --primary-foreground: #FFFFFF;
 
   --secondary: #1F2933;
@@ -98,10 +114,11 @@
   --info: #4A6FA5;
   --info-foreground: #FFFFFF;
 
-  --border: rgba(255, 255, 255, 0.08); /* Subtle border for dark mode */
+  --border: rgba(255, 255, 255, 0.08);
+  /* Subtle border for dark mode */
   --input: rgba(255, 255, 255, 0.08);
   --ring: #2FA4A9;
-  
+
   /* Charts in dark mode - generally same but ensure visibility */
   --chart-1: #2FA4A9;
   --chart-2: #4A6FA5;
@@ -188,10 +205,16 @@
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.5);
   }
-  
+
   .dark .glass-card {
-     background: rgba(31, 41, 51, 0.7); /* Kynara Graphite with opacity */
-     border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(31, 41, 51, 0.7);
+    /* Kynara Graphite with opacity */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .bg-card,
+  .bg-popover {
+    backdrop-filter: blur(12px);
   }
 }
 
@@ -199,6 +222,7 @@
   from {
     width: 100%;
   }
+
   to {
     width: 0%;
   }

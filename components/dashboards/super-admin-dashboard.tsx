@@ -64,7 +64,7 @@ export default function SuperAdminDashboard({ user }: { user?: User }) {
         <div className="space-y-6">
             {/* Page header */}
             <div>
-                <h1 className="text-3xl font-bold text-white tracking-tight">{getGreeting()}, {user?.full_name || 'Super Admin'}</h1>
+                <h1 className="text-3xl font-bold text-white tracking-tight">{getGreeting()}, {user?.full_name || 'Administrator'}</h1>
                 <p className="text-gray-400 mt-1">
                     System Overview for {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>

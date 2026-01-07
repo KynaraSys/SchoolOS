@@ -37,8 +37,12 @@ export const getConversations = async (): Promise<Conversation[]> => {
     return data
 }
 
-export const getMessages = async (id: number): Promise<Message[]> => {
-    const { data } = await api.get(`/messages/${id}`)
+export const getMessages = async (id: number, isUserId: boolean = false): Promise<Message[]> => {
+    const url = isUserId
+        ? `/messages/${id}?type=user`
+        : `/messages/${id}`
+
+    const { data } = await api.get(url)
     return data
 }
 

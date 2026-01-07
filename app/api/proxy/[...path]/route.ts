@@ -12,7 +12,8 @@ import { cookies } from 'next/headers';
  * JavaScript cannot access HttpOnly cookies.
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NEXT_PUBLIC_API_HOST ? `https://${process.env.NEXT_PUBLIC_API_HOST}` : 'http://127.0.0.1:8000');
 
 async function handleRequest(request: NextRequest, params: Promise<{ path: string[] }>) {
     try {

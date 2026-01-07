@@ -24,34 +24,12 @@ services:
       # Database Configuration
       - key: DB_CONNECTION
         value: pgsql
-      - key: DB_HOST
-        fromService:
-          type: psql
+      - key: DB_URL
+        fromDatabase:
           name: school-os-db
-          property: host
-      - key: DB_PORT
-        fromService:
-          type: psql
-          name: school-os-db
-          property: port
-      - key: DB_DATABASE
-        fromService:
-          type: psql
-          name: school-os-db
-          property: database
-      - key: DB_USERNAME
-        fromService:
-          type: psql
-          name: school-os-db
-          property: user
-      - key: DB_PASSWORD
-        fromService:
-          type: psql
-          name: school-os-db
-          property: password
+          property: connectionString
 
-      # Cache & Queue (Using 'file' and 'sync' for simplicity on free tier)
-      # Add Redis service and update these if you move to a paid plan.
+      # Cache & Queue
       - key: CACHE_DRIVER
         value: file
       - key: SESSION_DRIVER
@@ -72,11 +50,11 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
-      - key: NEXT_PUBLIC_API_URL
+      - key: NEXT_PUBLIC_API_HOST
         fromService:
           type: web
           name: school-os-backend
-          property: url
+          property: host
       - key: NODE_ENV
         value: production
 

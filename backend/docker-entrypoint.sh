@@ -4,7 +4,7 @@ set -e
 # Check and fix APP_KEY if necessary
 if [ -z "$APP_KEY" ] || [[ "$APP_KEY" != base64:* ]]; then
     echo "APP_KEY is missing or invalid. Generating a new one..."
-    php artisan key:generate --force
+
     # Source the new key from .env if it was written there, or just rely on artisan to have set it? 
     # key:generate writes to .env file. We might be in a read-only FS or .env might be ephemeral.
     # But key:generate usually updates the .env file. 

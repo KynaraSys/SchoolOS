@@ -38,7 +38,17 @@ export async function POST(request: Request) {
             body: JSON.stringify({ email, password }),
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('Login Route Error: Failed to parse backend response as JSON', responseText);
+            return NextResponse.json(
+                { message: 'Backend returned invalid response', details: responseText.substring(0, 500) },
+                { status: response.status >= 400 ? response.status : 500 }
+            );
+        }
 
         if (!response.ok) {
             return NextResponse.json(data, { status: response.status });

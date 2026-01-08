@@ -12,8 +12,17 @@ import { cookies } from 'next/headers';
  * JavaScript cannot access HttpOnly cookies.
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ||
-    (process.env.NEXT_PUBLIC_API_HOST ? `https://${process.env.NEXT_PUBLIC_API_HOST}` : 'http://127.0.0.1:8000');
+const getBackendUrl = () => {
+    const apiHost = process.env.NEXT_PUBLIC_API_HOST;
+    if (apiHost) {
+        if (apiHost.startsWith('http')) return apiHost;
+        if (apiHost.includes('.')) return `https://${apiHost}`;
+        return `http://${apiHost}`;
+    }
+    return process.env.NEXT_PUBLIC_API_URL ||
+        process.env.BACKEND_URL ||
+        'http://127.0.0.1:8000';
+};
 
 async function handleRequest(request: NextRequest, params: Promise<{ path: string[] }>) {
     try {
@@ -23,8 +32,10 @@ async function handleRequest(request: NextRequest, params: Promise<{ path: strin
         const authToken = cookieStore.get('auth_token')?.value;
 
         // Build the backend URL
+        const backendBase = getBackendUrl();
+        console.log(`[Proxy] Connecting to backend: ${backendBase}`);
         const backendPath = path.join('/');
-        const url = new URL(`/api/${backendPath}`, BACKEND_URL);
+        const url = new URL(`/api/${backendPath}`, backendBase);
 
         // Forward query parameters
         request.nextUrl.searchParams.forEach((value, key) => {

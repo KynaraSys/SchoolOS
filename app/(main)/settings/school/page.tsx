@@ -5,6 +5,8 @@ import SchoolSettings from "@/components/settings/school-settings"
 import { DashboardSkeleton } from "@/components/dashboard-skeleton"
 import { useEffect, useState, Suspense } from "react"
 
+export const dynamic = "force-dynamic";
+
 export default function SchoolSettingsPage() {
   const { user, isLoading } = useAuth()
   const [isMounted, setIsMounted] = useState(false)

@@ -7,7 +7,9 @@ export async function POST(request: Request) {
         const { email, password, remember } = body;
 
         // Forward request to Laravel Backend
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        // Forward request to Laravel Backend
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL ||
+            (process.env.NEXT_PUBLIC_API_HOST ? `https://${process.env.NEXT_PUBLIC_API_HOST}` : 'http://127.0.0.1:8000');
         const response = await fetch(`${backendUrl}/api/login`, {
             method: 'POST',
             headers: {

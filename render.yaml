@@ -24,10 +24,28 @@ services:
       # Database Configuration
       - key: DB_CONNECTION
         value: pgsql
-      - key: DB_URL
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
         fromDatabase:
           name: school-os-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: school-os-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: school-os-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: school-os-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: school-os-db
+          property: password
 
       # Cache & Queue
       - key: CACHE_DRIVER

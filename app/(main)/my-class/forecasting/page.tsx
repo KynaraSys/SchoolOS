@@ -5,6 +5,8 @@ import ForecastingView from "@/components/my-class/forecasting-view"
 import { Loader2 } from "lucide-react"
 import { Suspense } from "react"
 
+export const dynamic = "force-dynamic";
+
 export default function ForecastingPage() {
     const { user, isLoading } = useAuth()
 

@@ -8,6 +8,8 @@ export const metadata: Metadata = {
     description: "Admit a new learner into the CBC program.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function NewAdmissionPage() {
     return (
         <div className="container mx-auto py-8 max-w-5xl">

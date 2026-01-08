@@ -136,3 +136,5 @@ export default function AssessmentPage() {
         </Suspense>
     );
 }
+
+export const dynamic = "force-dynamic";

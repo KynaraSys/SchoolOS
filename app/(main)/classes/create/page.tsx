@@ -3,8 +3,9 @@
 import { useAuth } from "@/components/auth/auth-provider"
 import { ClassForm } from "@/components/classes/class-form"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { Suspense } from "react"
 
 export default function CreateClassPage() {
     const { user } = useAuth()
@@ -23,7 +24,9 @@ export default function CreateClassPage() {
             </div>
 
             <div className="border rounded-lg p-6 bg-card">
-                <ClassForm />
+                <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+                    <ClassForm />
+                </Suspense>
             </div>
         </div>
     )

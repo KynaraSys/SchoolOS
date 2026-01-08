@@ -3,9 +3,7 @@
 import { useAuth } from "@/components/auth/auth-provider"
 import SchoolSettings from "@/components/settings/school-settings"
 import { DashboardSkeleton } from "@/components/dashboard-skeleton"
-import { useEffect, useState } from "react"
-
-export const dynamic = "force-dynamic";
+import { useEffect, useState, Suspense } from "react"
 
 export default function SchoolSettingsPage() {
   const { user, isLoading } = useAuth()
@@ -20,6 +18,8 @@ export default function SchoolSettingsPage() {
   }
 
   return (
-    <SchoolSettings />
+    <Suspense fallback={<DashboardSkeleton />}>
+      <SchoolSettings />
+    </Suspense>
   )
 }

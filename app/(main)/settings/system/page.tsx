@@ -1,23 +1,7 @@
-"use client"
+import { SystemSettingsContent } from "@/components/settings/system-settings-content"
 
-import { useAuth } from "@/components/auth/auth-provider"
-import SystemSettings from "@/components/settings/system-settings"
-import { DashboardSkeleton } from "@/components/dashboard-skeleton"
-import { useEffect, useState } from "react"
+export const dynamic = "force-dynamic";
 
 export default function SystemSettingsPage() {
-  const { user, isLoading } = useAuth()
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  if (!isMounted || isLoading) {
-    return <DashboardSkeleton />
-  }
-
-  return (
-    <SystemSettings />
-  )
+  return <SystemSettingsContent />
 }

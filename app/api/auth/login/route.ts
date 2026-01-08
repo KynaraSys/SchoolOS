@@ -8,8 +8,27 @@ export async function POST(request: Request) {
 
         // Forward request to Laravel Backend
         // Forward request to Laravel Backend
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL ||
-            (process.env.NEXT_PUBLIC_API_HOST ? `https://${process.env.NEXT_PUBLIC_API_HOST}` : 'http://127.0.0.1:8000');
+        const apiHost = process.env.NEXT_PUBLIC_API_HOST;
+        let backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+        if (apiHost) {
+            // If host has protocol, use it
+            if (apiHost.startsWith('http')) {
+                backendUrl = apiHost;
+            }
+            // If host looks like a FQDN (has dots), use https
+            else if (apiHost.includes('.')) {
+                backendUrl = `https://${apiHost}`;
+            }
+            // Otherwise assume internal service name (http)
+            else {
+                backendUrl = `http://${apiHost}`; // Render internal service discovery usually on port 80/10000 depending on config. Try default 80 first or let service discovery handle it.
+                // Dockerfile says EXPOSE 80, so http://school-os-backend should work if on same private network.
+            }
+        }
+
+        console.log(`[Login] connecting to backend: ${backendUrl}, API_HOST env: ${apiHost}`);
+
         const response = await fetch(`${backendUrl}/api/login`, {
             method: 'POST',
             headers: {

@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const BACKEND_URL = process.env.BACKEND_URL ||
-    (process.env.NEXT_PUBLIC_API_HOST ? `https://${process.env.NEXT_PUBLIC_API_HOST}` :
-        (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'));
+const getBackendUrl = () => {
+    const apiHost = process.env.NEXT_PUBLIC_API_HOST;
+    if (apiHost) {
+        if (apiHost.startsWith('http')) return apiHost;
+        if (apiHost.includes('.')) return `https://${apiHost}`;
+        return `http://${apiHost}`;
+    }
+    return process.env.NEXT_PUBLIC_API_URL ||
+        process.env.BACKEND_URL ||
+        'http://127.0.0.1:8000';
+};
 
 export async function POST() {
     try {
@@ -13,7 +21,9 @@ export async function POST() {
         // Call backend logout to revoke the Sanctum token
         if (authToken) {
             try {
-                await fetch(`${BACKEND_URL}/api/logout`, {
+                const backendUrl = getBackendUrl();
+                console.log(`[Logout] connecting to backend: ${backendUrl}`);
+                await fetch(`${backendUrl}/api/logout`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,

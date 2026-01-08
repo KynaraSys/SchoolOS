@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useSearchParams } from "next/navigation";
 import { TeacherDashboard } from "@/components/assessment/teacher-dashboard";
@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import api from "@/lib/api";
 
-export default function AssessmentPage() {
+function AssessmentContent() {
     const { user } = useAuth();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -126,5 +126,13 @@ export default function AssessmentPage() {
                 onBack={() => setView('dashboard')}
             />
         )
+    );
+}
+
+export default function AssessmentPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <AssessmentContent />
+        </Suspense>
     );
 }

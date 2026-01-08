@@ -54,12 +54,12 @@ services:
         fromService:
           type: web
           name: school-os-backend
-          property: url
+          property: host
       - key: BACKEND_URL
         fromService:
           type: web
           name: school-os-backend
-          property: url
+          property: host
       - key: NODE_ENV
         value: production
 

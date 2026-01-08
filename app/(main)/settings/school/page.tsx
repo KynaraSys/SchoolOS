@@ -1,3 +1,5 @@
+"use client"
+
 import { useAuth } from "@/components/auth/auth-provider"
 import { DashboardSkeleton } from "@/components/dashboard-skeleton"
 import { useEffect, useState } from "react"

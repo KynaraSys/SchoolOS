@@ -1,11 +1,13 @@
-"use client"
-
 import { useAuth } from "@/components/auth/auth-provider"
-import SchoolSettings from "@/components/settings/school-settings"
 import { DashboardSkeleton } from "@/components/dashboard-skeleton"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState } from "react"
+import dynamicImport from "next/dynamic"
 
-export const dynamic = "force-dynamic";
+// Dynamically import SchoolSettings with SSR disabled to prevent build errors
+const SchoolSettings = dynamicImport(() => import("@/components/settings/school-settings"), {
+  ssr: false,
+  loading: () => <DashboardSkeleton />,
+})
 
 export default function SchoolSettingsPage() {
   const { user, isLoading } = useAuth()
@@ -19,9 +21,5 @@ export default function SchoolSettingsPage() {
     return <DashboardSkeleton />
   }
 
-  return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <SchoolSettings />
-    </Suspense>
-  )
+  return <SchoolSettings />
 }
